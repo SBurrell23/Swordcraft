@@ -6,12 +6,17 @@
 
 const ROOT = 'Assets/';
 
-/** Player colours, in seat order. The pack also ships a "Black" set. */
-export const COLORS = ['Blue', 'Red', 'Yellow', 'Purple'];
+/**
+ * Player colours, in seat order. The pack ships a Blue set too, but the whole
+ * interface is built from the blue button art - so a Blue player looked like
+ * the one faction the UI belonged to. Black takes that seat instead and the
+ * chrome stays neutral for everyone.
+ */
+export const COLORS = ['Black', 'Red', 'Yellow', 'Purple'];
 
 /** Banner / minimap tint for each faction. */
 export const COLOR_HEX = {
-  Blue: '#4ea3c8', Red: '#d1584f', Yellow: '#d3c34a', Purple: '#a97ac4', Black: '#7d8794',
+  Black: '#7d8794', Red: '#d1584f', Yellow: '#d3c34a', Purple: '#a97ac4',
 };
 
 /** Animated strip descriptor. */

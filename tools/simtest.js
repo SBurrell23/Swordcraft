@@ -8,6 +8,7 @@ import { Sim } from '../src/game/sim.js';
 import { AI } from '../src/game/ai.js';
 import { TICK_DT, ST, RESOURCES } from '../src/game/consts.js';
 import { encodeSnapshot } from '../src/net/protocol.js';
+import { COLORS } from '../src/game/assets.js';
 
 const ST_NAME = Object.fromEntries(Object.entries(ST).map(([k, v]) => [v, k]));
 
@@ -17,7 +18,7 @@ const seed = Number(process.argv[3] || 12345);
 const map = generateMap(seed);
 const players = [0, 1, 2, 3].map((slot) => ({
   id: slot + 1, slot, name: 'AI ' + (slot + 1),
-  color: ['Blue', 'Red', 'Yellow', 'Purple'][slot], ai: true,
+  color: COLORS[slot], ai: true,
 }));
 
 const sim = new Sim(map, players);

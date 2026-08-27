@@ -9,6 +9,7 @@ import { generateMap } from '../src/game/mapgen.js';
 import { Sim } from '../src/game/sim.js';
 import { TICK_DT, MAX_POP_CAP, UNITS, CMD, TILE, MAP_TILES } from '../src/game/consts.js';
 import { encodeSnapshot } from '../src/net/protocol.js';
+import { COLORS } from '../src/game/assets.js';
 
 const seconds = Number(process.argv[2] || 60);
 const seed = Number(process.argv[3] || 4242);
@@ -16,7 +17,7 @@ const seed = Number(process.argv[3] || 4242);
 const map = generateMap(seed);
 const players = [0, 1, 2, 3].map((slot) => ({
   id: slot + 1, slot, name: 'P' + (slot + 1),
-  color: ['Blue', 'Red', 'Yellow', 'Purple'][slot], ai: true,
+  color: COLORS[slot], ai: true,
 }));
 const sim = new Sim(map, players);
 

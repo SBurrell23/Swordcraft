@@ -426,7 +426,7 @@ const unitIconCache = new Map();
 /** A cropped idle frame, used as a small illustration in the help screen. */
 function unitIcon(type) {
   if (unitIconCache.has(type)) return unitIconCache.get(type);
-  const sheet = A.unit.Blue[type].idle;
+  const sheet = A.unit[COLORS[0]][type].idle;
   const box = sheet.fh;
   const inset = box === 320 ? 96 : 44;
   const url = cropDataURL(sheet, inset, inset, box - inset * 2, box - inset * 2);

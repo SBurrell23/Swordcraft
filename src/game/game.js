@@ -657,7 +657,7 @@ function emptyView() {
 }
 
 function tintFor(color) {
-  return { Blue: '#8fd3ea', Red: '#eda19b', Yellow: '#ebe19b', Purple: '#d3b7e6' }[color] || '#cfd8dc';
+  return { Black: '#b9c2cd', Red: '#eda19b', Yellow: '#ebe19b', Purple: '#d3b7e6' }[color] || '#cfd8dc';
 }
 
 function resourceColor(kind) {

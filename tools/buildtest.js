@@ -26,7 +26,7 @@ const failures = [];
 // the precise thing the old centre-radius test got wrong.
 {
   const map = generateMap(1);
-  const sim = new Sim(map, [{ id: 1, slot: 0, name: 'P1', color: 'Blue', ai: false }]);
+  const sim = new Sim(map, [{ id: 1, slot: 0, name: 'P1', color: 'Black', ai: false }]);
   const TILE = 64;
   for (const [kind, def] of Object.entries(BUILDINGS)) {
     const [fw, fh] = def.foot;
@@ -53,7 +53,7 @@ for (let s = 0; s < seeds; s++) {
 
   for (const kind of KINDS) {
     const def = BUILDINGS[kind];
-    const sim = new Sim(map, [{ id: 1, slot: 0, name: 'P1', color: 'Blue', ai: false }]);
+    const sim = new Sim(map, [{ id: 1, slot: 0, name: 'P1', color: 'Black', ai: false }]);
     const player = sim.players.get(1);
     // Plenty of everything, so only reachability is under test.
     for (const r of Object.keys(player.res)) player.res[r] = 100000;

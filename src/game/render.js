@@ -10,7 +10,7 @@
 // "blob" autotile set: a 3x3 nine-slice plus narrow single-width variants
 // along the fourth row and column.
 
-import { A, drawFrame, frameAt, COLOR_HEX } from './assets.js';
+import { A, drawFrame, frameAt, COLOR_HEX, COLORS } from './assets.js';
 import { TILE, MAP_TILES, LEVEL, UNITS, BUILDINGS, ST, CAMERA } from './consts.js';
 
 /** The largest share of the map, per axis, the camera may ever show. */
@@ -502,7 +502,7 @@ export class Renderer {
   drawProjectiles(ctx, vis, view) {
     for (const p of view.projectiles) {
       if (!inRect(vis, p.x, p.y, 60)) continue;
-      const arrow = A.unit[p.colorName || 'Blue'].archer.arrow;
+      const arrow = A.unit[p.colorName || COLORS[0]].archer.arrow;
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.dir);
