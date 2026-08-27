@@ -97,6 +97,8 @@ export class Renderer {
     this.waterColor = '#1c6c86';
     this.time = 0;
     this.hoverId = 0;
+    /** A resource node under the cursor, when no unit or building is. */
+    this.hoverNode = null;
     /** Set by input: {kind, tx, ty, valid} while a building is being sited. */
     this.placing = null;
     this.selection = new Set();
@@ -453,32 +455,50 @@ export class Renderer {
    * Frames whatever the cursor is over with the pack's corner brackets. With
    * sprites this small and this densely packed, "which one am I about to
    * click" is a real question, and this answers it without a tooltip.
+   *
+   * Resource nodes get the same treatment at a smaller size, because nothing
+   * else on the map tells a new player that a tree is something they can put a
+   * drone on.
    */
   drawHoverReticle(ctx, view) {
+    const node = this.hoverNode;
+    if (node) {
+      this.drawBrackets(ctx, node.x - 26, node.y - 34, node.x + 26, node.y + 12, 9);
+      return;
+    }
     if (!this.hoverId) return;
-    const art = A.ui.cursorTarget;      // Cursor_04: four white corner brackets
-    let cx = 0, cy = 0, w = 0, h = 0;
 
     const u = view.units.find((e) => e.id === this.hoverId);
     if (u) {
       const r = UNITS[u.type].radius;
-      cx = u.x; cy = u.y - r * 1.1;
-      w = h = r * 3.4;
-    } else {
-      const b = view.buildings.find((e) => e.id === this.hoverId);
-      if (!b) return;
-      const def = BUILDINGS[b.kind];
-      cx = (b.tx + def.foot[0] / 2) * TILE;
-      cy = (b.ty + def.foot[1] / 2) * TILE;
-      w = def.foot[0] * TILE + 18;
-      h = def.foot[1] * TILE + 18;
+      this.drawBrackets(ctx, u.x - r * 1.3, u.y - r * 3, u.x + r * 1.3, u.y + r * 0.6, 10);
+      return;
     }
+    const b = view.buildings.find((e) => e.id === this.hoverId);
+    if (!b) return;
+    const def = BUILDINGS[b.kind];
+    this.drawBrackets(ctx, b.tx * TILE - 3, b.ty * TILE - 3,
+      (b.tx + def.foot[0]) * TILE + 3, (b.ty + def.foot[1]) * TILE + 3, 13);
+  }
 
-    // A gentle pulse, so the brackets read as live rather than as scenery.
-    const pulse = 1 + Math.sin(this.time * 5) * 0.03;
+  /**
+   * Draws the four corner brackets of Cursor_04 at a fixed size around a
+   * rectangle. Scaling the whole 128px sprite to the target instead would make
+   * the brackets grow with the thing they frame, which is what made them
+   * overbearing on a castle.
+   */
+  drawBrackets(ctx, x0, y0, x1, y1, size) {
+    const art = A.ui.cursorTarget.img;
+    const sw = 21, sh = 25;                 // one bracket in the source sheet
+    const h = size * (sh / sw);
+    // Source corners, then destination corners in the same order.
+    const src = [[3, 3], [104, 3], [3, 100], [104, 100]];
+    const dst = [[x0, y0], [x1 - size, y0], [x0, y1 - h], [x1 - size, y1 - h]];
     ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.drawImage(art.img, cx - (w * pulse) / 2, cy - (h * pulse) / 2, w * pulse, h * pulse);
+    ctx.globalAlpha = 0.95;
+    for (let i = 0; i < 4; i++) {
+      ctx.drawImage(art, src[i][0], src[i][1], sw, sh, dst[i][0], dst[i][1], size, h);
+    }
     ctx.restore();
   }
 

@@ -119,7 +119,10 @@ export class Input {
         this.drag.moved = true;
       }
     }
-    this.renderer.hoverId = this.pickEntity(this.mouse.wx, this.mouse.wy)?.id || 0;
+    const hit = this.pickEntity(this.mouse.wx, this.mouse.wy);
+    this.renderer.hoverId = hit ? hit.id : 0;
+    // A seam only counts as hovered when nothing solid is in front of it.
+    this.renderer.hoverNode = hit ? null : this.pickNode(this.mouse.wx, this.mouse.wy);
     if (this.mode === 'place') this.updatePlacementGhost();
   }
 
@@ -310,8 +313,13 @@ export class Input {
   beginPlacement(kind) {
     const def = BUILDINGS[kind];
     if (!def) return;
-    const player = this.game.myPlayer();
-    if (player && !this.game.canAfford(def.cost)) { audio.play('deny'); this.game.hud.flashCost(kind); return; }
+    const refusal = this.game.whyCannotBuild(kind);
+    if (refusal) {
+      audio.play('deny');
+      this.game.hud.flashCost(kind);
+      this.game.hud.toast(refusal, 'danger');
+      return;
+    }
     this.placeKind = kind;
     this.setMode('place');
     this.updatePlacementGhost();

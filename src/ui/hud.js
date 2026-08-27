@@ -145,11 +145,17 @@ export class Hud {
       const cost = RESOURCES.filter((r) => def.cost[r])
         .map((r) => `<span class="c"><img alt="" src="${iconURL(RES_ICON[r])}">${def.cost[r]}</span>`)
         .join('');
+      // A population requirement is a cost like any other, so it is shown
+      // alongside the resources rather than discovered by a failed click.
+      const pop = def.requiresPop
+        ? `<span class="c pop"><img alt="" src="${iconURL(ICON.shield)}">${def.requiresPop}</span>`
+        : '';
+      const needs = def.requiresPop ? ` — needs ${def.requiresPop} population` : '';
       return `
-        <button class="pixel-btn build-btn" data-build="${key}" title="${def.name} — ${def.blurb}">
+        <button class="pixel-btn build-btn" data-build="${key}" title="${def.name}${needs} — ${def.blurb}">
           <span class="bb-key">${hotkey}</span>
           <span class="bb-name">${def.name}</span>
-          <span class="bb-cost">${cost}</span>
+          <span class="bb-cost">${cost}${pop}</span>
         </button>`;
     }).join('');
     for (const b of this.el.buildButtons.querySelectorAll('[data-build]')) {
@@ -201,8 +207,15 @@ export class Hud {
     if (!me) return;
     for (const b of this.el.buildButtons.querySelectorAll('[data-build]')) {
       const def = BUILDINGS[b.dataset.build];
-      const ok = RESOURCES.every((r) => (me.res[r] || 0) >= (def.cost[r] || 0));
-      b.classList.toggle('unaffordable', !ok);
+      const affordable = RESOURCES.every((r) => (me.res[r] || 0) >= (def.cost[r] || 0));
+      // A pop requirement locks the button outright; being short of resources
+      // only greys it, since that resolves on its own in a few seconds.
+      const locked = !!def.requiresPop && me.pop < def.requiresPop;
+      b.classList.toggle('unaffordable', !affordable && !locked);
+      b.classList.toggle('locked', locked);
+      b.disabled = locked;
+      const popChip = b.querySelector('.c.pop');
+      if (popChip) popChip.classList.toggle('unmet', locked);
       const flash = this.costFlash.get(b.dataset.build) || 0;
       b.classList.toggle('flash', performance.now() < flash);
     }

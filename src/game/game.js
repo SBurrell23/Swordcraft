@@ -424,6 +424,26 @@ export class Game {
   }
 
   /**
+   * Why a building cannot be sited right now, or null if it can. The host
+   * re-checks all of this anyway; having it here lets the interface grey the
+   * button out and say what is missing rather than letting a click fail
+   * silently at the far end.
+   *
+   * @returns {string|null}
+   */
+  whyCannotBuild(kind) {
+    const def = BUILDINGS[kind];
+    const me = this.myPlayer();
+    if (!def || !me) return 'Not available.';
+    if (def.requiresPop && me.pop < def.requiresPop) {
+      return `${def.name} needs a settlement of ${def.requiresPop}. You have ${me.pop}.`;
+    }
+    const short = RESOURCES.filter((r) => (me.res[r] || 0) < (def.cost[r] || 0));
+    if (short.length) return `Not enough ${short.join(' or ')}.`;
+    return null;
+  }
+
+  /**
    * Client-side check for the placement ghost. The host re-validates before
    * anything is actually built, so this only has to be close enough to give
    * honest feedback under the cursor.

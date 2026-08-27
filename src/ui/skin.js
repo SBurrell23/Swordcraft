@@ -45,7 +45,13 @@ export function applySkin() {
  * whose bottom edge is a curled roll - which is what makes a scroll out of it.
  */
 const BANNER_X = [[28, 128], [192, 256], [320, 404]];
-const BANNER_Y = [[60, 128], [192, 256], [320, 431]];
+/**
+ * The sheet's bottom row is 111px tall but only its last dozen rows carry the
+ * curl - above that is redundant parchment and below it is transparent padding.
+ * Cropping to the part that actually draws something takes 37px of dead space
+ * out of the bar.
+ */
+const BANNER_Y = [[60, 128], [192, 256], [366, 404]];
 const scrollCache = new Map();
 
 /**

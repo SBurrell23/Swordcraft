@@ -71,8 +71,10 @@ drain, so `P` halts a building when you would rather bank for something else.
 Every building shows a countdown to its next unit above its roof, and selecting
 one of your own offers a **Demolish** control, which hands back half the cost.
 
-Whatever the cursor is over is framed with corner brackets, and the camera will
-not pull back far enough to show more than half the island at once.
+Whatever the cursor is over is framed with corner brackets — buildings, units,
+and resource seams alike, so it is obvious which things a drone can be put on.
+The camera will not pull back far enough to show more than half the island at
+once.
 
 **Expanding.** An **Outpost** is a second base: it trains drones, accepts their
 deliveries so a distant seam stops being a long walk, and raises how many drones
@@ -80,7 +82,8 @@ you may hold (14 per base). Taking ground is how an economy grows.
 
 **Population** starts at 20 and rises by 10 per house, to a ceiling of 80. The
 **Monastery** additionally needs a settlement of 30 before it can be sited — a
-late building for a developed base.
+late building for a developed base. Its button carries that requirement next to
+its cost and stays locked until you meet it.
 
 **Terrain.** Rivers and lakes cut the island into regions joined by a handful of
 land bridges. Water is impassable, so those crossings are where the fighting
