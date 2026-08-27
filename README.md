@@ -86,7 +86,9 @@ once.
 deliveries so a distant seam stops being a long walk, and raises how many peasants
 you may hold (14 per base). Taking ground is how an economy grows.
 
-**Population** starts at 20 and rises by 10 per house, to a ceiling of 80. The
+**Population** starts at 20 and rises by 10 per house, to a ceiling of 200 -
+eighteen houses to reach it. A Peasant costs 1 and every soldier costs 2, so a
+full cap is a hundred soldiers, or rather more once workers are counted. The
 **Monastery** additionally needs a settlement of 30 before it can be sited — a
 late building for a developed base. Its button carries that requirement next to
 its cost and stays locked until you meet it.
@@ -137,6 +139,7 @@ tools/
   mapcheck.js       offline map generator sanity check
   buildtest.js      regression test: every sited building gets finished
   simtest.js        headless four-way AI soak test
+  popstress.js      worst case: four full-population armies in one battle
 ```
 
 ### Networking
@@ -165,17 +168,24 @@ Disconnects are noticed through the peer connection's ICE state rather than a
 heartbeat, because browsers throttle timers in background tabs to about once a
 minute and a player who merely alt-tabs has not left.
 
-### Three test harnesses
+### Four test harnesses
 
 ```bash
 node tools/mapcheck.js 8      # generate 8 maps; check connectivity and fairness
 node tools/buildtest.js 8     # site every building on 8 maps; assert each is finished
 node tools/simtest.js 10      # run a 10-minute four-way AI match with no browser
+node tools/popstress.js 90    # four maxed armies in one fight; measure the worst case
 ```
 
 `simtest` reports per-tick cost, snapshot size, and what each player's economy
 and army were doing every 30 seconds. Most of the balance and pathfinding work
 in this project was done against it rather than in the browser.
+
+`popstress` answers the question the population cap raises: four players at 200
+pop is 448 units. Measured, that fight costs 0.16 ms a tick on average and 8 ms
+at its worst against a 50 ms budget, and pushes the largest snapshot to 6.9 KiB
+- about 69 KiB/s per peer. The ceiling is a design choice, not a limit the
+engine imposed.
 
 `buildtest` exists because of a specific bug: a worker's "have I arrived?" test
 measured a circle from the building's centre, which a worker standing on a

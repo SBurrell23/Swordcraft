@@ -8,7 +8,7 @@
 // throws it at the nearest enemy castle, and pulls home when its own base is
 // being hit.
 
-import { CMD, BUILDINGS, MAP_TILES, TILE } from './consts.js';
+import { CMD, BUILDINGS, MAP_TILES, TILE, MAX_POP_CAP } from './consts.js';
 
 /** Order in which an AI wants its first buildings. */
 const BUILD_ORDER = [
@@ -61,7 +61,7 @@ export class AI {
 
     // Decide what is wanted before deciding whether it can be paid for, so the
     // AI knows when it should be saving rather than spending.
-    const needHousing = player.pop >= player.popCap - 6 && player.popCap < 80;
+    const needHousing = player.pop >= player.popCap - 6 && player.popCap < MAX_POP_CAP;
     let want;
     if (needHousing) {
       want = 'house';

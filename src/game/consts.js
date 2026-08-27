@@ -29,10 +29,15 @@ export const RESOURCES = ['wood', 'gold'];
  */
 export const START_RESOURCES = { wood: 60, gold: 50 };
 
-/** Population: houses raise the cap, units consume it. */
+/**
+ * Population: houses raise the cap, units consume it. A unit costs 1 pop
+ * (Peasant) or 2 (everything else), so a full 200 is about a hundred soldiers
+ * or a mixed army well north of that - and reaching it takes eighteen houses,
+ * which is a real investment rather than a formality.
+ */
 export const BASE_POP_CAP = 20;
 export const POP_PER_HOUSE = 10;
-export const MAX_POP_CAP = 80;
+export const MAX_POP_CAP = 200;
 /**
  * Peasants a player may hold per base building. Without a ceiling the free
  * population is eaten by workers and there is never an army; tying the ceiling
