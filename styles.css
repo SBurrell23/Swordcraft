@@ -704,6 +704,18 @@ canvas#world[hidden] { display: none; }
   gap: 5px;
   flex: none;
   width: 118px;
+  /* Bounded by the panel, not by its own contents: the buttons share whatever
+     height the readout has, so a second one can never fall off the bottom. */
+  height: 100%;
+  overflow: hidden;
 }
-.sel-actions .pixel-btn { min-height: 0; padding: 6px 8px; font-size: 10.5px; }
+.sel-actions .pixel-btn {
+  /* Shrink to share the column when there are two, but never grow: a lone
+     Demolish should not balloon to fill the whole readout. */
+  flex: 0 1 38px;
+  min-height: 0;
+  padding: 0 6px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
 

@@ -423,7 +423,11 @@ export class Hud {
     btn.hidden = !canToggle;
     if (!canToggle) { this.prodTarget = 0; return; }
     this.prodTarget = e.id;
-    btn.textContent = e.paused ? 'Resume training (P)' : 'Halt training (P)';
+    // Short enough to stay on one line: two of these stack in a fixed-height
+    // column, and a label that wraps pushes the one below it out of the panel.
+    btn.textContent = e.paused ? 'Resume (P)' : 'Halt (P)';
+    btn.title = e.paused ? 'Resume training at this building (P)'
+      : 'Stop training here so the cost can be banked elsewhere (P)';
     btn.classList.toggle('danger', !e.paused);
   }
 
@@ -433,7 +437,9 @@ export class Hud {
     const canRaze = !e.type && e.kind !== 'castle' && e.owner === this.game.localPlayerId;
     btn.hidden = !canRaze;
     if (!canRaze) return;
-    btn.textContent = 'Demolish' + (e.done ? ' (half back)' : ' (refunded)');
+    btn.textContent = 'Demolish';
+    btn.title = e.done ? 'Pull this building down for half its cost back'
+      : 'Cancel this site; the cost is refunded in full';
   }
 
   // -- feedback --------------------------------------------------------------
