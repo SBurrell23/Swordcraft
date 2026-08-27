@@ -35,8 +35,16 @@ export class Particles {
   // -- emitters --------------------------------------------------------------
 
   /** Plays one pass of a sheet strip at a world position. */
-  sheet(name, x, y, { scale = 1, alpha = 1, rot = 0, flip = false, fade = false, dy = 0 } = {}) {
-    const s = A.fx[name];
+  sheet(name, x, y, opts = {}) {
+    this.strip(A.fx[name], x, y, opts);
+  }
+
+  /**
+   * Plays any loaded strip, not only one from the particle sheets. Used for
+   * effects that live with a unit's own art - the Monk's healing light, which
+   * belongs on whoever is being mended rather than on the Monk.
+   */
+  strip(s, x, y, { scale = 1, alpha = 1, rot = 0, flip = false, fade = false, dy = 0 } = {}) {
     if (!s) return;
     this.anims.push({ s, x, y, t: 0, scale, alpha, rot, flip, fade, vy: dy });
   }
@@ -155,7 +163,7 @@ export class Particles {
     }
   }
 
-  /** Coins arcing into the castle when a pawn cashes in. */
+  /** Coins arcing into the castle when a peasant cashes in. */
   deposit(x, y, kind) {
     const color = kind === 'gold' ? '#ffd54a' : kind === 'wood' ? '#b07a45' : '#e2807c';
     for (let i = 0; i < 5; i++) {

@@ -95,14 +95,14 @@ export class Menu {
               <div class="brief">
                 <h4>A match in short</h4>
                 <ul>
-                  <li>Your castle trains drones on its own; they pick jobs and
+                  <li>Your castle trains peasants on its own; they pick jobs and
                       gather wood and gold without orders.</li>
                   <li>Spend that on houses for population and on the buildings
                       that train your army.</li>
                   <li>Training costs resources every time, so halt a building
                       (<b>P</b>) when you would rather bank.</li>
                   <li>Raise an <b>Outpost</b> to claim a distant seam: it takes
-                      deliveries and raises your drone ceiling.</li>
+                      deliveries and raises your peasant ceiling.</li>
                   <li>Rivers and lakes cut the island up. Hold the bridges.</li>
                   <li>Raze every rival castle to win.</li>
                 </ul>
@@ -382,14 +382,14 @@ export class Menu {
               <h3>The goal</h3>
               <p>Destroy every other player's castle. Lose your own and you are out.</p>
               <h3>Economy</h3>
-              <p>Pawns are drones: left idle they pick whichever resource you are
-                 shortest of and work it without being told, and they rethink it after
-                 every delivery. Right-click a tree or a gold seam to direct one
+              <p>Left idle, peasants pick whichever resource you are shortest of and
+                 work it without being told, and they rethink it after every
+                 delivery. Right-click a tree or a gold seam to direct one
                  yourself.</p>
               <h3>Expanding</h3>
-              <p>An Outpost is a second base. It trains drones, takes their deliveries
+              <p>An Outpost is a second base. It trains peasants, takes their deliveries
                  so a far-off seam stops being a long walk, and raises the number of
-                 drones you may hold.</p>
+                 peasants you may hold.</p>
               <h3>Terrain</h3>
               <p>Rivers and lakes cut the island into regions joined by a handful of
                  land bridges. Those crossings are where the fighting happens.</p>

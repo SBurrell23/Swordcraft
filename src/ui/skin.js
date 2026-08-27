@@ -46,12 +46,19 @@ export function applySkin() {
  */
 const BANNER_X = [[28, 128], [192, 256], [320, 404]];
 /**
- * The sheet's bottom row is 111px tall but only its last dozen rows carry the
- * curl - above that is redundant parchment and below it is transparent padding.
- * Cropping to the part that actually draws something takes 37px of dead space
- * out of the bar.
+ * The sheet's bottom row is 111px tall, but most of it above the curl is
+ * redundant parchment. Cropping it removes a band of dead space from the bar -
+ * though the crop has to keep going far enough down to contain the rolled ends
+ * in the corner pieces, which reach to y=430, or they end up sliced in half.
  */
-const BANNER_Y = [[60, 128], [192, 256], [366, 404]];
+const BANNER_Y = [[60, 128], [192, 256], [378, 431]];
+
+/**
+ * Where the parchment sheet stops and the roll begins, in source pixels. The
+ * readout is centred against this rather than the whole image, so it sits on
+ * the paper instead of drifting down over the curl.
+ */
+const PARCHMENT_BOTTOM = 390;
 const scrollCache = new Map();
 
 /**
@@ -106,8 +113,8 @@ export function scrollBarURL(width, scale = 0.5) {
     height: cv.height,
     capLeft: w[0],
     capRight: w[2],
-    // The curled bottom row is decoration; content should stay above it.
-    contentHeight: h[0] + h[1],
+    // The curl and the rolls are decoration; content belongs on the paper.
+    contentHeight: h[0] + h[1] + Math.round((PARCHMENT_BOTTOM - BANNER_Y[2][0]) * scale),
   };
   if (scrollCache.size > 24) scrollCache.clear();
   scrollCache.set(key, out);

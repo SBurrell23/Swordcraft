@@ -356,11 +356,16 @@ export class Game {
           audio.play('deposit', ev.x, ev.y);
         }
         break;
-      case EV.HEAL:
+      case EV.HEAL: {
+        // The Monk's light belongs on whoever is being mended, in the caster's
+        // colours - watching it play over the Monk told you nothing.
+        const caster = A.unit[this.colorOf.get(ev.p)];
+        if (caster) this.fx.strip(caster.monk.healEffect, ev.x, ev.y - 26, { scale: 0.72 });
         this.fx.healMotes(ev.x, ev.y);
         this.fx.floatText(ev.x, ev.y - 50, '+' + ev.a, '#9ef7c4', 13);
         audio.play('heal', ev.x, ev.y);
         break;
+      }
       case EV.NODE_DEPLETED:
         this.fx.dustBurst(ev.x, ev.y, 0.8);
         break;
@@ -463,6 +468,20 @@ export class Game {
         && ty < b.ty + def.foot[1] && ty + foot[1] > b.ty) return false;
     }
     return true;
+  }
+
+  /**
+   * Backs the quick-select buttons in the console.
+   * @param {'peasants'|'army'|'all'} kind
+   */
+  selectAllOfKind(kind) {
+    const test = kind === 'peasants' ? (u) => u.type === 'peasant'
+      : kind === 'army' ? (u) => u.type !== 'peasant'
+        : () => true;
+    const n = this.input.selectAllOwned(test);
+    if (!n) this.hud.toast(kind === 'peasants' ? 'You have no peasants.'
+      : kind === 'army' ? 'You have no army yet.' : 'You have no units.');
+    else this.input.centerOnSelection();
   }
 
   onSelectionChanged() {

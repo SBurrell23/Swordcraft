@@ -25,35 +25,37 @@ const still = (src) => ({ src, fw: 0, fh: 0, frames: 1, fps: 0, loop: false });
 
 const unitAnims = (color) => {
   const u = ROOT + 'Units/' + color + ' Units/';
-  const pawn = u + 'Pawn/Pawn_';
+  // The unit is a Peasant everywhere in the game; "Pawn" is only the name
+  // the Tiny Swords pack gives the folder and files on disk.
+  const peasant = u + 'Pawn/Pawn_';
   const war = u + 'Warrior/Warrior_';
   const arc = u + 'Archer/Archer_';
   const lan = u + 'Lancer/Lancer_';
   const mon = u + 'Monk/';
   return {
-    pawn: {
-      idle: strip(pawn + 'Idle.png', 192, 192, 8, 8),
-      run: strip(pawn + 'Run.png', 192, 192, 6, 12),
+    peasant: {
+      idle: strip(peasant + 'Idle.png', 192, 192, 8, 8),
+      run: strip(peasant + 'Run.png', 192, 192, 6, 12),
       // Carry variants, used on the walk home with a full load.
-      idleWood: strip(pawn + 'Idle Wood.png', 192, 192, 8, 8),
-      runWood: strip(pawn + 'Run Wood.png', 192, 192, 6, 12),
-      idleGold: strip(pawn + 'Idle Gold.png', 192, 192, 8, 8),
-      runGold: strip(pawn + 'Run Gold.png', 192, 192, 6, 12),
-      idleMeat: strip(pawn + 'Idle Meat.png', 192, 192, 8, 8),
-      runMeat: strip(pawn + 'Run Meat.png', 192, 192, 6, 12),
+      idleWood: strip(peasant + 'Idle Wood.png', 192, 192, 8, 8),
+      runWood: strip(peasant + 'Run Wood.png', 192, 192, 6, 12),
+      idleGold: strip(peasant + 'Idle Gold.png', 192, 192, 8, 8),
+      runGold: strip(peasant + 'Run Gold.png', 192, 192, 6, 12),
+      idleMeat: strip(peasant + 'Idle Meat.png', 192, 192, 8, 8),
+      runMeat: strip(peasant + 'Run Meat.png', 192, 192, 6, 12),
       // Tool variants, used walking to and working a node or a build site.
-      idleAxe: strip(pawn + 'Idle Axe.png', 192, 192, 8, 8),
-      runAxe: strip(pawn + 'Run Axe.png', 192, 192, 6, 12),
-      chop: strip(pawn + 'Interact Axe.png', 192, 192, 6, 12),
-      idlePickaxe: strip(pawn + 'Idle Pickaxe.png', 192, 192, 8, 8),
-      runPickaxe: strip(pawn + 'Run Pickaxe.png', 192, 192, 6, 12),
-      mine: strip(pawn + 'Interact Pickaxe.png', 192, 192, 6, 12),
-      idleKnife: strip(pawn + 'Idle Knife.png', 192, 192, 8, 8),
-      runKnife: strip(pawn + 'Run Knife.png', 192, 192, 6, 12),
-      butcher: strip(pawn + 'Interact Knife.png', 192, 192, 4, 12),
-      idleHammer: strip(pawn + 'Idle Hammer.png', 192, 192, 8, 8),
-      runHammer: strip(pawn + 'Run Hammer.png', 192, 192, 6, 12),
-      build: strip(pawn + 'Interact Hammer.png', 192, 192, 3, 9),
+      idleAxe: strip(peasant + 'Idle Axe.png', 192, 192, 8, 8),
+      runAxe: strip(peasant + 'Run Axe.png', 192, 192, 6, 12),
+      chop: strip(peasant + 'Interact Axe.png', 192, 192, 6, 12),
+      idlePickaxe: strip(peasant + 'Idle Pickaxe.png', 192, 192, 8, 8),
+      runPickaxe: strip(peasant + 'Run Pickaxe.png', 192, 192, 6, 12),
+      mine: strip(peasant + 'Interact Pickaxe.png', 192, 192, 6, 12),
+      idleKnife: strip(peasant + 'Idle Knife.png', 192, 192, 8, 8),
+      runKnife: strip(peasant + 'Run Knife.png', 192, 192, 6, 12),
+      butcher: strip(peasant + 'Interact Knife.png', 192, 192, 4, 12),
+      idleHammer: strip(peasant + 'Idle Hammer.png', 192, 192, 8, 8),
+      runHammer: strip(peasant + 'Run Hammer.png', 192, 192, 6, 12),
+      build: strip(peasant + 'Interact Hammer.png', 192, 192, 3, 9),
     },
     warrior: {
       idle: strip(war + 'Idle.png', 192, 192, 8, 8),

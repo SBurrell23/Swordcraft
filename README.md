@@ -5,7 +5,7 @@ JavaScript. No build step, no framework, no bundler — a static folder, a canva
 and a WebRTC data channel between browsers.
 
 Four castles start in the four corners of a procedurally generated island cut up
-by rivers and lakes. Your drones gather wood and gold on their own; you spend it
+by rivers and lakes. Your peasants gather wood and gold on their own; you spend it
 on buildings that train Warriors, Lancers, Archers and Monks. The last castle
 standing wins.
 
@@ -34,10 +34,11 @@ connected, game traffic is a direct browser-to-browser data channel.
 | Left drag | box select |
 | Left click | select one · double-click selects all of that type on screen |
 | Shift + click | add to / remove from selection |
-| Right click | move, attack, or send a drone to a resource |
+| Right click | move, attack, or send a peasant to a resource |
 | `A` then click | attack-move |
 | `S` / `G` | stop / hold ground |
 | `Tab` | select your whole army |
+| Peasants / Army / All | select every unit of that kind, and jump the camera to them |
 | `H` `O` `B` `R` `T` `M` | place house, outpost, barracks, archery range, watchtower, monastery |
 | `Y` then click | set a building's rally point |
 | `P` | halt or resume training at the selected building |
@@ -53,31 +54,36 @@ screen, and are remembered between sessions.
 
 ## How a match works
 
-**The opening.** Everyone starts with five drones and a small stake — 60 wood
-and 50 gold, enough for a single house or most of one drone and nothing more.
+**The opening.** Everyone starts with five peasants and a small stake — 60 wood
+and 50 gold, enough for a single house or most of one peasant and nothing more.
 The first minutes are about getting income running, not spending a treasury you
 were handed.
 
-**Drones.** Your castle trains Pawns on a timer. Left alone they choose their
+**Peasants.** Your castle trains peasants on a timer. Left alone they choose their
 own job — whichever resource you are shortest of, at the nearest seam with a
 free slot — and rethink it after every delivery, so income stays balanced
 without micromanagement. Right-click a tree or a gold seam to direct one
 yourself; it will stay there until the seam runs dry.
 
-**Buildings.** Placing one costs resources immediately and the nearest drones
+**Buildings.** Placing one costs resources immediately and the nearest peasants
 walk over, hammer in hand, and raise it. Once finished, a production building
 trains its unit on a timer and pays that unit's cost each time. That is a real
 drain, so `P` halts a building when you would rather bank for something else.
 Every building shows a countdown to its next unit above its roof, and selecting
 one of your own offers a **Demolish** control, which hands back half the cost.
 
+**Rounding up.** The console carries three buttons - **Peasants**, **Army**,
+**All** - each of which selects every unit of that kind you own and moves the
+camera to them, so an attack does not start with hunting for stragglers. Each
+button shows its live count.
+
 Whatever the cursor is over is framed with corner brackets — buildings, units,
-and resource seams alike, so it is obvious which things a drone can be put on.
+and resource seams alike, so it is obvious which things a peasant can be put on.
 The camera will not pull back far enough to show more than half the island at
 once.
 
-**Expanding.** An **Outpost** is a second base: it trains drones, accepts their
-deliveries so a distant seam stops being a long walk, and raises how many drones
+**Expanding.** An **Outpost** is a second base: it trains peasants, accepts their
+deliveries so a distant seam stops being a long walk, and raises how many peasants
 you may hold (14 per base). Taking ground is how an economy grows.
 
 **Population** starts at 20 and rises by 10 per house, to a ceiling of 80. The

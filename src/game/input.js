@@ -268,12 +268,12 @@ export class Input {
     }
 
     const node = this.pickNode(this.mouse.wx, this.mouse.wy);
-    const pawns = units.filter((u) => u.type === 'pawn');
-    if (node && pawns.length) {
-      this.game.sendCommand({ t: CMD.GATHER, u: pawns.map((u) => u.id), id: node.id });
+    const peasants = units.filter((u) => u.type === 'peasant');
+    if (node && peasants.length) {
+      this.game.sendCommand({ t: CMD.GATHER, u: peasants.map((u) => u.id), id: node.id });
       this.game.fx.moveMarker(node.x, node.y, 'rgba(150,230,255,0.9)');
       audio.play('order');
-      const rest = units.filter((u) => u.type !== 'pawn');
+      const rest = units.filter((u) => u.type !== 'peasant');
       if (rest.length) {
         this.game.sendCommand({ t: CMD.MOVE, u: rest.map((u) => u.id), x: this.mouse.wx, y: this.mouse.wy });
       }
@@ -342,8 +342,8 @@ export class Input {
     const p = this.renderer.placing;
     if (!p) return;
     if (!p.valid || !this.game.canAfford(BUILDINGS[p.kind].cost)) { audio.play('deny'); return; }
-    const pawns = this.ownSelected().filter((u) => u.type === 'pawn').map((u) => u.id);
-    this.game.sendCommand({ t: CMD.BUILD, kind: p.kind, tx: p.tx, ty: p.ty, u: pawns });
+    const peasants = this.ownSelected().filter((u) => u.type === 'peasant').map((u) => u.id);
+    this.game.sendCommand({ t: CMD.BUILD, kind: p.kind, tx: p.tx, ty: p.ty, u: peasants });
     audio.play('buildStart', (p.tx + 1) * TILE, (p.ty + 1) * TILE);
     // Shift keeps the tool up for laying down a row of the same thing.
     if (!e.shiftKey) this.setMode('normal');
@@ -440,12 +440,20 @@ export class Input {
     audio.play('order');
   }
 
-  selectAllArmy() {
+  /**
+   * Selects every unit of yours that passes a test. Hunting down stragglers by
+   * hand is the least interesting thing an RTS asks of you.
+   * @returns {number} how many were selected
+   */
+  selectAllOwned(predicate) {
     const ids = this.view.units
-      .filter((u) => u.owner === this.me && u.type !== 'pawn')
+      .filter((u) => u.owner === this.me && predicate(u))
       .map((u) => u.id);
     this.setSelection(ids);
+    return ids.length;
   }
+
+  selectAllArmy() { return this.selectAllOwned((u) => u.type !== 'peasant'); }
 
   cancelSelectedConstruction() {
     for (const b of this.ownSelectedBuildings()) {

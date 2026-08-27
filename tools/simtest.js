@@ -43,17 +43,17 @@ for (let t = 0; t < ticks && !sim.over; t++) {
       `${p.name.replace('AI ', 'P')}${p.alive ? '' : '(out)'}:` +
       `${countUnits(p.id)}u/${countBuildings(p.id)}b ` +
       RESOURCES.map((r) => r[0] + Math.round(p.res[r])).join(' ') + ' ' +
-      `pop${p.pop}/${p.popCap} ${pawnSummary(p.id)}`).join('  |  ');
+      `pop${p.pop}/${p.popCap} ${peasantSummary(p.id)}`).join('  |  ');
     console.log(`t=${(t * TICK_DT).toFixed(0).padStart(4)}s  ${line}`);
   }
 }
 
-/** Compact census of a player's drones: how many, and what they are doing. */
-function pawnSummary(id) {
+/** Compact census of a player's peasants: how many, and what they are doing. */
+function peasantSummary(id) {
   const counts = new Map();
   let n = 0;
   for (const u of sim.units.values()) {
-    if (u.owner !== id || u.type !== 'pawn') continue;
+    if (u.owner !== id || u.type !== 'peasant') continue;
     n++;
     const key = ST_NAME[u.st] || u.st;
     counts.set(key, (counts.get(key) || 0) + 1);

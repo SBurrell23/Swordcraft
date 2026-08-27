@@ -13,12 +13,12 @@ import {
   TILE, MAP_TILES, UNITS, BUILDINGS, GATHER, BUILD_RATE, CMD, ST,
   START_RESOURCES, BASE_POP_CAP, POP_PER_HOUSE, MAX_POP_CAP, RESOURCES,
   TOWER_ATTACK, LANCER_GUARD_ARMOR, RALLY_SPREAD, NODE_SLOTS, LEVEL,
-  MAX_PAWNS_PER_BASE, DEMOLISH_REFUND,
+  MAX_PEASANTS_PER_BASE, DEMOLISH_REFUND,
 } from './consts.js';
 import { NavGrid, tileIndexAt, tileCenter } from './pathfind.js';
 
 /**
- * How close a drone must get to a footprint to work it. A shade over one tile,
+ * How close a peasant must get to a footprint to work it. A shade over one tile,
  * so a worker standing on any adjacent tile - including a diagonal one - counts
  * as having arrived.
  */
@@ -97,7 +97,7 @@ export class Sim {
 
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2;
-      this.addUnit(player.id, 'pawn',
+      this.addUnit(player.id, 'peasant',
         castle.x + Math.cos(a) * 130 + dx * 40,
         castle.y + Math.sin(a) * 100 + dy * 60);
     }
@@ -272,7 +272,7 @@ export class Sim {
         const node = this.nodes.get(cmd.id);
         if (!node || node.amount <= 0) break;
         for (const u of mine(cmd.u)) {
-          if (u.type !== 'pawn') continue;
+          if (u.type !== 'peasant') continue;
           this.assignNode(u, node);
         }
         break;
@@ -363,9 +363,9 @@ export class Sim {
     const b = this.addBuilding(player.id, kind, tx, ty, false);
     this.emit(EV.BUILD_PLACED, { ok: 1, p: player.id, x: b.x, y: b.y, id: b.id });
 
-    // Send the selected pawns, or failing that the nearest few idle ones.
-    let crew = selected.filter((u) => u.type === 'pawn');
-    if (!crew.length) crew = this.nearestIdlePawns(player.id, b.x, b.y, 3);
+    // Send the selected peasants, or failing that the nearest few idle ones.
+    let crew = selected.filter((u) => u.type === 'peasant');
+    if (!crew.length) crew = this.nearestIdlePeasants(player.id, b.x, b.y, 3);
     for (const u of crew.slice(0, 5)) this.assignBuild(u, b);
   }
 
@@ -388,10 +388,10 @@ export class Sim {
     return this.nav.nearestApproach(tx, ty, foot, (tx + foot[0] / 2) * TILE, centre, 1) >= 0;
   }
 
-  nearestIdlePawns(ownerId, x, y, count) {
+  nearestIdlePeasants(ownerId, x, y, count) {
     const out = [];
     for (const u of this.units.values()) {
-      if (u.owner !== ownerId || u.type !== 'pawn') continue;
+      if (u.owner !== ownerId || u.type !== 'peasant') continue;
       if (u.st === ST.BUILD_WORK || u.st === ST.BUILD_GO) continue;
       out.push(u);
     }
@@ -424,7 +424,7 @@ export class Sim {
     this.clearWork(u);
     u.nodeId = node.id;
     u.workKind = node.kind;
-    // Drones that chose their own job re-think it after every delivery; ones a
+    // Peasants that chose their own job re-think it after every delivery; ones a
     // player pointed at a seam stay there until it runs dry.
     u.autoTasked = auto;
     u.approachTries = 0;
@@ -559,10 +559,10 @@ export class Sim {
   }
 
   updateIdle(u, dt) {
-    if (u.type === 'pawn') {
-      // Drones never stand around: pick up work on their own.
+    if (u.type === 'peasant') {
+      // Peasants never stand around: pick up work on their own.
       u.autoT -= dt;
-      if (u.autoT <= 0) { u.autoT = 0.7; this.autoAssignPawn(u); }
+      if (u.autoT <= 0) { u.autoT = 0.7; this.autoAssignPeasant(u); }
       return;
     }
     if (u.type === 'monk') { if (this.tryHeal(u)) return; }
@@ -658,7 +658,8 @@ export class Sim {
       u.pendingHit = true;
       const amount = Math.min(UNITS.monk.heal, target.maxHp - target.hp);
       target.hp += amount;
-      this.emit(EV.HEAL, { x: target.x, y: target.y, id: target.id, a: Math.round(amount) });
+      this.emit(EV.HEAL,
+        { x: target.x, y: target.y, id: target.id, p: u.owner, a: Math.round(amount) });
     }
     if (u.animT >= strip) this.setState(u, ST.IDLE);
   }
@@ -666,24 +667,24 @@ export class Sim {
   // -- gathering -------------------------------------------------------------
 
   /**
-   * Idle drones choose their own job. Rather than sending everyone at whatever
-   * is scarcest - which starves the other two lines entirely - each drone joins
+   * Idle peasants choose their own job. Rather than sending everyone at whatever
+   * is scarcest - which starves the other two lines entirely - each peasant joins
    * whichever resource is furthest below its fair share of the workforce.
    */
-  autoAssignPawn(u) {
+  autoAssignPeasant(u) {
     const player = this.players.get(u.owner);
     if (!player) return;
 
     const working = Object.fromEntries(RESOURCES.map((r) => [r, 0]));
     let total = 0;
     for (const w of this.units.values()) {
-      if (w.owner !== u.owner || w.type !== 'pawn' || !w.workKind || w.id === u.id) continue;
+      if (w.owner !== u.owner || w.type !== 'peasant' || !w.workKind || w.id === u.id) continue;
       working[w.workKind]++;
       total++;
     }
 
     // Scarcity sets the target split; a stockpile of one resource quietly
-    // moves drones onto the other two.
+    // moves peasants onto the other two.
     let sum = 0;
     const weight = {};
     for (const r of RESOURCES) {
@@ -697,7 +698,7 @@ export class Sim {
     });
 
     // Take the best-ranked kind that actually has a reachable free node, so a
-    // player whose gold has run out does not leave drones standing idle.
+    // player whose gold has run out does not leave peasants standing idle.
     let fallback = null, fallbackD = Infinity;
     for (const kind of order) {
       let best = null, bestD = Infinity;
@@ -780,10 +781,10 @@ export class Sim {
       }
       u.carryKind = 0; u.carryAmount = 0;
       u.path = null;
-      // A self-directed drone reconsiders here, which is what keeps all three
+      // A self-directed peasant reconsiders here, which is what keeps all three
       // income lines balanced as the economy shifts underneath it.
       if (u.autoTasked) {
-        this.autoAssignPawn(u);
+        this.autoAssignPeasant(u);
         if (u.nodeId) return;
         this.clearWork(u);
         this.setState(u, ST.IDLE);
@@ -831,7 +832,7 @@ export class Sim {
     }
     if (this.followPath(u, dt)) {
       // Arrived at the reserved spot but still short: try another way in a few
-      // times before giving the job up, since another drone may be in the way.
+      // times before giving the job up, since another peasant may be in the way.
       if (++u.approachTries > 6 || !this.approach(u, b.tx, b.ty, b.def.foot)) {
         this.clearWork(u);
         this.setState(u, ST.IDLE);
@@ -868,12 +869,12 @@ export class Sim {
   updateBuilding(b, dt) {
     if (b.hitFlash > 0) b.hitFlash -= dt;
     if (!b.done) {
-      // Nobody working it? Pull in a pawn rather than letting it sit forever.
+      // Nobody working it? Pull in a peasant rather than letting it sit forever.
       if (b.builders <= 0) {
         b.idleT = (b.idleT || 0) + dt;
         if (b.idleT > 1.5) {
           b.idleT = 0;
-          const crew = this.nearestIdlePawns(b.owner, b.x, b.y, 1);
+          const crew = this.nearestIdlePeasants(b.owner, b.x, b.y, 1);
           if (crew.length) this.assignBuild(crew[0], b);
         }
       }
@@ -889,15 +890,15 @@ export class Sim {
         const def = UNITS[b.def.spawns];
         // Training costs resources as well as time, which is what gives both
         // income lines something to be spent on.
-        const pawnCount = b.def.spawns === 'pawn' ? this.countPawns(b.owner) : -1;
-        // The drone ceiling scales with how many bases you hold, so an outpost
+        const peasantCount = b.def.spawns === 'peasant' ? this.countPeasants(b.owner) : -1;
+        // The peasant ceiling scales with how many bases you hold, so an outpost
         // buys real economy rather than just a second spawn point.
-        const droneCeiling = this.countBases(b.owner) * MAX_PAWNS_PER_BASE;
-        const drowningInDrones = pawnCount >= droneCeiling;
-        // A player with a base but no drones and no gold cannot dig itself out.
-        // Rather than leave them alive but inert, raise one last drone free.
-        const lastHope = pawnCount === 0;
-        if (!drowningInDrones
+        const peasantCeiling = this.countBases(b.owner) * MAX_PEASANTS_PER_BASE;
+        const atPeasantCeiling = peasantCount >= peasantCeiling;
+        // A player with a base but no peasants and no gold cannot dig itself out.
+        // Rather than leave them alive but inert, raise one last peasant free.
+        const lastHope = peasantCount === 0;
+        if (!atPeasantCeiling
           && (lastHope || (player.pop + def.pop <= player.popCap && this.canAfford(player, def.cost)))) {
           if (!lastHope) this.charge(player, def.cost);
           b.spawnT = b.def.interval;
@@ -905,8 +906,8 @@ export class Sim {
           const u = this.addUnit(b.owner, b.def.spawns, spot[0], spot[1]);
           this.recomputePop();
           this.emit(EV.UNIT_SPAWNED, { id: u.id, x: u.x, y: u.y, p: b.owner, t: b.def.spawns });
-          // March to the rally point; pawns just start working instead.
-          if (u.type !== 'pawn') {
+          // March to the rally point; peasants just start working instead.
+          if (u.type !== 'peasant') {
             this.setState(u, ST.MOVE);
             this.moveTo(u, b.rallyX + (Math.random() - 0.5) * RALLY_SPREAD,
               b.rallyY + (Math.random() - 0.5) * RALLY_SPREAD, 0);
@@ -929,13 +930,13 @@ export class Sim {
     }
   }
 
-  countPawns(ownerId) {
+  countPeasants(ownerId) {
     let n = 0;
-    for (const u of this.units.values()) if (u.owner === ownerId && u.type === 'pawn') n++;
+    for (const u of this.units.values()) if (u.owner === ownerId && u.type === 'peasant') n++;
     return n;
   }
 
-  /** Finished castles and outposts, which together set the drone ceiling. */
+  /** Finished castles and outposts, which together set the peasant ceiling. */
   countBases(ownerId) {
     let n = 0;
     for (const b of this.buildings.values()) {
@@ -965,7 +966,7 @@ export class Sim {
    * wrong in the worst place: a worker routed to a diagonal corner tile sits
    * further from the centre than one on a flat side, so a centre-radius test
    * says it has not arrived and it turns around. That was the bug behind
-   * drones walking up to a site and wandering off again.
+   * peasants walking up to a site and wandering off again.
    */
   footprintDistance(x, y, tx, ty, foot) {
     const x0 = tx * TILE, y0 = ty * TILE;

@@ -26,12 +26,12 @@ const GROUND_SET_X = 0;
 /** Tool_01 is the wooden mallet; the rest of that sheet is axe, sword, pick. */
 const MALLET = 0;
 
-/** The tool a drone swings at each kind of resource, and holds walking to it. */
+/** The tool a peasant swings at each kind of resource, and holds walking to it. */
 const TOOL_WORK = { wood: 'chop', gold: 'mine' };
 const TOOL_HOLD = { wood: 'Axe', gold: 'Pickaxe' };
 
 /** Where a unit's feet sit relative to its frame centre, before scaling. */
-const FOOT_OFFSET = { pawn: 39, warrior: 41, archer: 40, monk: 38, lancer: 40 };
+const FOOT_OFFSET = { peasant: 39, warrior: 41, archer: 40, monk: 38, lancer: 40 };
 /** Where a building's base sits relative to the bottom of its sprite. */
 const BUILDING_BASE = {
   castle: 249, barracks: 245, archery: 240, monastery: 310, tower: 230,
@@ -446,9 +446,6 @@ export class Renderer {
     ctx.restore();
 
     drawFrame(ctx, sheet, u.frame, u.x, cy, scale, u.flip);
-
-    // The monk's healing light is a second strip played over the caster.
-    if (u.st === ST.HEAL) drawFrame(ctx, anims.monk.healEffect, u.frame, u.x, cy, scale, u.flip, 0.9);
   }
 
   /**
@@ -458,7 +455,7 @@ export class Renderer {
    *
    * Resource nodes get the same treatment at a smaller size, because nothing
    * else on the map tells a new player that a tree is something they can put a
-   * drone on.
+   * peasant on.
    */
   drawHoverReticle(ctx, view) {
     const node = this.hoverNode;
@@ -639,7 +636,7 @@ function pickUnitSheet(anims, u) {
   const moving = u.st === ST.MOVE || u.st === ST.ATTACK_MOVE || u.st === ST.CHASE
     || u.st === ST.RETURN || u.st === ST.GATHER_GO || u.st === ST.BUILD_GO;
 
-  if (u.type === 'pawn') {
+  if (u.type === 'peasant') {
     // Anything to do with a build site is done hammer in hand, walk included.
     if (u.st === ST.BUILD_WORK) return a.build;
     if (u.st === ST.BUILD_GO) return moving ? a.runHammer : a.idleHammer;

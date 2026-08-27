@@ -54,21 +54,34 @@ export class Hud {
         </div>
 
         <div id="selectionPanel" class="slate-panel">
-          <div id="selEmpty" class="sel-empty">Nothing selected</div>
-          <div id="selSingle" class="sel-single" hidden>
-            <img id="selPortrait" alt="">
-            <div class="sel-body">
-              <div id="selName" class="sel-name"></div>
-              <div id="selHpWrap" class="sel-hp"><div id="selHp"></div></div>
-              <div id="selBlurb" class="sel-blurb"></div>
-              <div id="selExtra" class="sel-extra"></div>
+          <div class="sel-main">
+            <div id="selEmpty" class="sel-empty">Nothing selected</div>
+            <div id="selSingle" class="sel-single" hidden>
+              <img id="selPortrait" alt="">
+              <div class="sel-body">
+                <div id="selName" class="sel-name"></div>
+                <div id="selHpWrap" class="sel-hp"><div id="selHp"></div></div>
+                <div id="selBlurb" class="sel-blurb"></div>
+                <div id="selExtra" class="sel-extra"></div>
+              </div>
               <div class="sel-actions">
                 <button id="prodBtn" class="pixel-btn tiny" hidden></button>
                 <button id="razeBtn" class="pixel-btn tiny danger" hidden></button>
               </div>
             </div>
+            <div id="selGroup" class="sel-group" hidden></div>
           </div>
-          <div id="selGroup" class="sel-group" hidden></div>
+          <div class="sel-quick">
+            <button class="pixel-btn tiny" data-select="peasants" title="Select every peasant you own">
+              Peasants <b data-count="peasants">0</b>
+            </button>
+            <button class="pixel-btn tiny" data-select="army" title="Select your whole army (Tab)">
+              Army <b data-count="army">0</b>
+            </button>
+            <button class="pixel-btn tiny" data-select="all" title="Select every unit you own">
+              All <b data-count="all">0</b>
+            </button>
+          </div>
         </div>
 
         <div id="buildPanel" class="slate-panel">
@@ -101,6 +114,8 @@ export class Hud {
       prodBtn: this.root.querySelector('#prodBtn'),
       razeBtn: this.root.querySelector('#razeBtn'),
       topbar: this.root.querySelector('#topbar'),
+      counts: Object.fromEntries(['peasants', 'army', 'all'].map((k) =>
+        [k, this.root.querySelector(`[data-count="${k}"]`)])),
     };
     this.prodTarget = 0;
 
@@ -109,6 +124,13 @@ export class Hud {
     this.el.menuBtn.addEventListener('click', () => { audio.play('click'); this.game.toggleMenu(); });
     this.el.prodBtn.addEventListener('click', () => { audio.play('click'); this.game.toggleProduction(); });
     this.el.razeBtn.addEventListener('click', () => this.onRazeClicked());
+    for (const b of this.root.querySelectorAll('[data-select]')) {
+      b.addEventListener('click', () => {
+        audio.play('click');
+        this.game.selectAllOfKind(b.dataset.select);
+      });
+      b.addEventListener('mouseenter', () => audio.play('hover'));
+    }
     this.mmCtx = this.el.minimap.getContext('2d');
     this.mmCtx.imageSmoothingEnabled = false;
 
@@ -198,6 +220,7 @@ export class Hud {
       this.el.amounts.pop.parentElement.classList.toggle('capped', me.pop >= me.popCap);
     }
     this.updateAffordability(me);
+    this.updateQuickCounts(view);
     this.updateChips(view);
     this.drawMinimap(view);
     this.tickToasts(dt);
@@ -219,6 +242,25 @@ export class Hud {
       const flash = this.costFlash.get(b.dataset.build) || 0;
       b.classList.toggle('flash', performance.now() < flash);
     }
+  }
+
+  /**
+   * Live counts on the quick-select buttons. Knowing you have eleven soldiers
+   * before you click is half of why the button is useful.
+   */
+  updateQuickCounts(view) {
+    let peasants = 0, army = 0;
+    for (const u of view.units) {
+      if (u.owner !== this.game.localPlayerId) continue;
+      if (u.type === 'peasant') peasants++; else army++;
+    }
+    const set = (key, n) => {
+      const el = this.el.counts[key];
+      if (el && el.textContent !== String(n)) el.textContent = n;
+    };
+    set('peasants', peasants);
+    set('army', army);
+    set('all', peasants + army);
   }
 
   updateChips(view) {

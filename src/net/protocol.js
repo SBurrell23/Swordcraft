@@ -26,10 +26,10 @@ export const MSG = {
 /** First byte of a binary frame. */
 const SNAPSHOT = 1;
 
-const UNIT_TYPES = ['pawn', 'warrior', 'lancer', 'archer', 'monk'];
+const UNIT_TYPES = ['peasant', 'warrior', 'lancer', 'archer', 'monk'];
 const BUILDING_KINDS = ['castle', 'house', 'barracks', 'archery', 'monastery', 'tower', 'outpost'];
 
-/** Which resource a drone is currently working, for its tool animation. */
+/** Which resource a peasant is currently working, for its tool animation. */
 const WORK_KINDS = ['', 'wood', 'gold'];
 const WORK_INDEX = { wood: 1, gold: 2 };
 

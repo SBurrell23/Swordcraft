@@ -1,4 +1,4 @@
-// Regression test for the thing that was broken: a drone told to raise a
+// Regression test for the thing that was broken: a peasant told to raise a
 // building walking up to it and then wandering off.
 //
 //   node tools/buildtest.js [seeds]
@@ -15,7 +15,7 @@ import { TICK_DT, BUILDINGS, CMD, MAP_TILES } from '../src/game/consts.js';
 
 const seeds = Number(process.argv[2] || 6);
 const KINDS = ['house', 'outpost', 'barracks', 'archery', 'tower'];
-/** Generous: a two-tile building is ~190 build points at 12/sec per drone. */
+/** Generous: a two-tile building is ~190 build points at 12/sec per peasant. */
 const PATIENCE_SECONDS = 90;
 
 let attempted = 0, finished = 0, refused = 0;

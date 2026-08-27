@@ -130,7 +130,7 @@ export class AI {
     const sim = this.sim;
     const army = [];
     for (const u of sim.units.values()) {
-      if (u.owner === this.id && u.type !== 'pawn') army.push(u);
+      if (u.owner === this.id && u.type !== 'peasant') army.push(u);
     }
 
     // A base under attack outranks whatever else is happening.

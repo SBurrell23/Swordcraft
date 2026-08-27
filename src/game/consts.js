@@ -24,7 +24,7 @@ export const RESOURCES = ['wood', 'gold'];
 
 /**
  * What everyone starts with. Deliberately small - enough for one house or most
- * of a drone and nothing else - so the opening minutes are about getting the
+ * of a peasant and nothing else - so the opening minutes are about getting the
  * economy running rather than spending a treasury you were handed.
  */
 export const START_RESOURCES = { wood: 60, gold: 50 };
@@ -34,11 +34,11 @@ export const BASE_POP_CAP = 20;
 export const POP_PER_HOUSE = 10;
 export const MAX_POP_CAP = 80;
 /**
- * Drones a player may hold per base building. Without a ceiling the free
+ * Peasants a player may hold per base building. Without a ceiling the free
  * population is eaten by workers and there is never an army; tying the ceiling
  * to bases is what makes expanding worth the stone.
  */
-export const MAX_PAWNS_PER_BASE = 14;
+export const MAX_PEASANTS_PER_BASE = 14;
 
 // ---------------------------------------------------------------------------
 // Units
@@ -62,11 +62,11 @@ export const MAX_PAWNS_PER_BASE = 14;
 
 /** @type {Record<string, UnitDef>} */
 export const UNITS = {
-  pawn: {
-    name: 'Pawn', hp: 70, speed: 108, radius: 14, damage: 5, armor: 0,
+  peasant: {
+    name: 'Peasant', hp: 70, speed: 108, radius: 14, damage: 5, armor: 0,
     range: 24, cooldown: 1.2, sight: 190, pop: 1, scale: 0.72,
     cost: { gold: 35 },
-    blurb: 'Drone. Gathers wood and gold, and raises your buildings.',
+    blurb: 'Gathers wood and gold, and raises your buildings.',
   },
   warrior: {
     name: 'Warrior', hp: 220, speed: 112, radius: 16, damage: 26, armor: 3,
@@ -98,12 +98,12 @@ export const UNITS = {
 /** Extra damage the Lancer's brace absorbs while it is holding position. */
 export const LANCER_GUARD_ARMOR = 10;
 
-/** Pawn gathering: seconds per trip-load and how much a load is worth. */
+/** Peasant gathering: seconds per trip-load and how much a load is worth. */
 export const GATHER = {
   wood: { time: 3.4, amount: 12 },
   gold: { time: 4.2, amount: 11 },
 };
-/** Pawn build rate, in build-points per second (one pawn on one site). */
+/** Peasant build rate, in build-points per second (one peasant on one site). */
 export const BUILD_RATE = 12;
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export const BUILD_RATE = 12;
  * @property {string} [spawns]         unit key produced on a timer
  * @property {number} [interval]       seconds between spawns
  * @property {number} [buildPoints]    work needed to finish construction
- * @property {boolean} [dropoff]       drones deliver their loads here
+ * @property {boolean} [dropoff]       peasants deliver their loads here
  * @property {number} [requiresPop]    population needed before it may be sited
  */
 
@@ -130,14 +130,14 @@ export const BUILD_RATE = 12;
 export const BUILDINGS = {
   castle: {
     name: 'Castle', hp: 3200, foot: [4, 3], sw: 320, sh: 256, scale: 0.8,
-    cost: {}, spawns: 'pawn', interval: 11, buildPoints: 0, dropoff: true,
-    blurb: 'Your seat of power. Trains drones. Lose it and you are out.',
+    cost: {}, spawns: 'peasant', interval: 11, buildPoints: 0, dropoff: true,
+    blurb: 'Your seat of power. Trains peasants. Lose it and you are out.',
   },
   outpost: {
     name: 'Outpost', hp: 1500, foot: [2, 2], sw: 128, sh: 192, scale: 0.8,
-    cost: { wood: 130, gold: 90 }, spawns: 'pawn', interval: 14,
+    cost: { wood: 130, gold: 90 }, spawns: 'peasant', interval: 14,
     buildPoints: 190, dropoff: true,
-    blurb: 'A second base. Trains drones and takes their deliveries, so a distant seam becomes worth working.',
+    blurb: 'A second base. Trains peasants and takes their deliveries, so a distant seam becomes worth working.',
   },
   house: {
     name: 'House', hp: 700, foot: [2, 2], sw: 128, sh: 192, scale: 0.8,
@@ -191,7 +191,7 @@ export const RALLY_SPREAD = 90;
 // ---------------------------------------------------------------------------
 
 export const NODE_AMOUNT = { wood: 420, gold: 760 };
-/** Pawns that can work a single node at once. */
+/** Peasants that can work a single node at once. */
 export const NODE_SLOTS = { wood: 1, gold: 3 };
 
 // ---------------------------------------------------------------------------
