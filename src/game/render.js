@@ -13,12 +13,18 @@
 import { A, drawFrame, frameAt, COLOR_HEX } from './assets.js';
 import { TILE, MAP_TILES, LEVEL, UNITS, BUILDINGS, ST, CAMERA } from './consts.js';
 
+/** The largest share of the map, per axis, the camera may ever show. */
+export const MAX_VIEW_FRACTION = 0.5;
+
 const CHUNK = 16;                    // tiles per baked chunk
 const CHUNK_PX = CHUNK * TILE;
 const CHUNKS = Math.ceil(MAP_TILES / CHUNK);
 
 /** Column offset of the ground blob set inside Tilemap_colorN.png. */
 const GROUND_SET_X = 0;
+
+/** Tool_01 is the wooden mallet; the rest of that sheet is axe, sword, pick. */
+const MALLET = 0;
 
 /** The tool a drone swings at each kind of resource, and holds walking to it. */
 const TOOL_WORK = { wood: 'chop', gold: 'mine' };
@@ -43,7 +49,22 @@ export class Camera {
     const hw = this.vw / (2 * this.zoom), hh = this.vh / (2 * this.zoom);
     return { x0: this.x - hw, y0: this.y - hh, x1: this.x + hw, y1: this.y + hh, hw, hh };
   }
+  /**
+   * The furthest out the camera may pull. Seeing the whole island at once
+   * turns the game into a spreadsheet, so the view is capped at half the map
+   * on each axis - which means the floor depends on the window size.
+   */
+  minZoom() {
+    const half = (MAP_TILES * TILE) * MAX_VIEW_FRACTION;
+    return Math.max(CAMERA.minZoom, this.vw / half, this.vh / half);
+  }
+
+  clampZoom() {
+    this.zoom = Math.max(this.minZoom(), Math.min(CAMERA.maxZoom, this.zoom));
+  }
+
   clamp() {
+    this.clampZoom();
     const { hw, hh } = this.view();
     const w = MAP_TILES * TILE;
     // When the map is smaller than the viewport on an axis, centre on it.
@@ -200,6 +221,7 @@ export class Renderer {
     fx.drawGround(ctx, vis);
     this.drawSelectionRings(ctx, vis, view, localPlayerId);
     this.drawSorted(ctx, vis, view, localPlayerId);
+    this.drawHoverReticle(ctx, view);
     this.drawProjectiles(ctx, vis, view);
     fx.drawTop(ctx, vis, this.time);
     this.drawBars(ctx, vis, view);
@@ -377,8 +399,10 @@ export class Renderer {
       ctx.lineWidth = 2;
       ctx.strokeRect(b.tx * TILE + 4, b.ty * TILE + 4, def.foot[0] * TILE - 8, def.foot[1] * TILE - 8);
       ctx.setLineDash([]);
-      // Tools down at the site, so a foundation reads as a place being worked.
-      drawFrame(ctx, A.res.tools[b.id % A.res.tools.length], 0,
+      // The builder's mallet down at the site, so a foundation reads as a
+      // place being worked. Always the mallet - an axe or pickaxe lying at a
+      // construction site reads as a resource, which is misleading.
+      drawFrame(ctx, A.res.tools[MALLET], 0,
         b.tx * TILE + 14, (b.ty + def.foot[1]) * TILE - 6, 0.7);
     } else if ((this.flash.get(b.id) || 0) > this.time) {
       ctx.filter = 'brightness(1.7)';
@@ -419,6 +443,39 @@ export class Renderer {
 
     // The monk's healing light is a second strip played over the caster.
     if (u.st === ST.HEAL) drawFrame(ctx, anims.monk.healEffect, u.frame, u.x, cy, scale, u.flip, 0.9);
+  }
+
+  /**
+   * Frames whatever the cursor is over with the pack's corner brackets. With
+   * sprites this small and this densely packed, "which one am I about to
+   * click" is a real question, and this answers it without a tooltip.
+   */
+  drawHoverReticle(ctx, view) {
+    if (!this.hoverId) return;
+    const art = A.ui.cursorTarget;      // Cursor_04: four white corner brackets
+    let cx = 0, cy = 0, w = 0, h = 0;
+
+    const u = view.units.find((e) => e.id === this.hoverId);
+    if (u) {
+      const r = UNITS[u.type].radius;
+      cx = u.x; cy = u.y - r * 1.1;
+      w = h = r * 3.4;
+    } else {
+      const b = view.buildings.find((e) => e.id === this.hoverId);
+      if (!b) return;
+      const def = BUILDINGS[b.kind];
+      cx = (b.tx + def.foot[0] / 2) * TILE;
+      cy = (b.ty + def.foot[1] / 2) * TILE;
+      w = def.foot[0] * TILE + 18;
+      h = def.foot[1] * TILE + 18;
+    }
+
+    // A gentle pulse, so the brackets read as live rather than as scenery.
+    const pulse = 1 + Math.sin(this.time * 5) * 0.03;
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(art.img, cx - (w * pulse) / 2, cy - (h * pulse) / 2, w * pulse, h * pulse);
+    ctx.restore();
   }
 
   drawProjectiles(ctx, vis, view) {

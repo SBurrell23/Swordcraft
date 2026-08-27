@@ -42,6 +42,7 @@ connected, game traffic is a direct browser-to-browser data channel.
 | `Y` then click | set a building's rally point |
 | `P` | halt or resume training at the selected building |
 | `Delete` | cancel a building under construction |
+| Demolish button | pull down one of your own buildings (asks twice) |
 | `Ctrl`+`1`–`9` / `1`–`9` | make / recall a control group |
 | `F` / `Space` | centre on selection / on your base |
 | Arrows, screen edge, middle-drag | pan · mouse wheel zooms |
@@ -62,7 +63,12 @@ yourself; it will stay there until the seam runs dry.
 walk over, hammer in hand, and raise it. Once finished, a production building
 trains its unit on a timer and pays that unit's cost each time. That is a real
 drain, so `P` halts a building when you would rather bank for something else.
-Every building shows a countdown to its next unit above its roof.
+Every building shows a countdown to its next unit above its roof, and selecting
+one of your own offers a **Demolish** control - half the cost back, and it asks
+twice, because there is no undo.
+
+Whatever the cursor is over is framed with corner brackets, and the camera will
+not pull back far enough to show more than half the island at once.
 
 **Expanding.** An **Outpost** is a second base: it trains drones, accepts their
 deliveries so a distant seam stops being a long walk, and raises how many drones
@@ -116,6 +122,7 @@ src/
     skin.js         repacks the 9-slice UI art into CSS custom properties
 tools/
   mapcheck.js       offline map generator sanity check
+  buildtest.js      regression test: every sited building gets finished
   simtest.js        headless four-way AI soak test
 ```
 
@@ -145,16 +152,24 @@ Disconnects are noticed through the peer connection's ICE state rather than a
 heartbeat, because browsers throttle timers in background tabs to about once a
 minute and a player who merely alt-tabs has not left.
 
-### Two test harnesses
+### Three test harnesses
 
 ```bash
 node tools/mapcheck.js 8      # generate 8 maps; check connectivity and fairness
+node tools/buildtest.js 8     # site every building on 8 maps; assert each is finished
 node tools/simtest.js 10      # run a 10-minute four-way AI match with no browser
 ```
 
 `simtest` reports per-tick cost, snapshot size, and what each player's economy
 and army were doing every 30 seconds. Most of the balance and pathfinding work
 in this project was done against it rather than in the browser.
+
+`buildtest` exists because of a specific bug: a worker's "have I arrived?" test
+measured a circle from the building's centre, which a worker standing on a
+diagonal corner tile could never satisfy - so it walked up to the site and
+turned around again. The test now checks that predicate against every tile
+touching every footprint, and then plays real matches to confirm crews finish
+what they start.
 
 ## Deployment
 

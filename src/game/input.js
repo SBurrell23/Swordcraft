@@ -136,7 +136,8 @@ export class Input {
     e.preventDefault();
     const before = this.camera.screenToWorld(this.mouse.x, this.mouse.y);
     const factor = Math.exp(-e.deltaY * 0.0014);
-    this.camera.zoom = Math.max(CAMERA.minZoom, Math.min(CAMERA.maxZoom, this.camera.zoom * factor));
+    this.camera.zoom *= factor;
+    this.camera.clampZoom();
     // Keep the world point under the cursor pinned while zooming.
     const after = this.camera.screenToWorld(this.mouse.x, this.mouse.y);
     this.camera.x += before[0] - after[0];

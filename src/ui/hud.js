@@ -9,7 +9,7 @@
 import { A, ICON, COLOR_HEX, cropDataURL } from '../game/assets.js';
 import { BUILDINGS, UNITS, BUILD_MENU, RESOURCES, TILE, MAP_TILES } from '../game/consts.js';
 import { audio } from '../game/audio.js';
-import { avatarURL } from './skin.js';
+import { avatarURL, scrollBarURL } from './skin.js';
 
 /** Which pack icon stands for each resource. */
 export const RES_ICON = { wood: ICON.wood, gold: ICON.gold };
@@ -32,7 +32,7 @@ export class Hud {
 
   build() {
     this.root.innerHTML = `
-      <div id="topbar" class="scroll-panel">
+      <div id="topbar">
         <div class="res-group">
           ${RESOURCES.map((r) => `
             <div class="res" data-res="${r}" title="${r}">
@@ -62,7 +62,10 @@ export class Hud {
               <div id="selHpWrap" class="sel-hp"><div id="selHp"></div></div>
               <div id="selBlurb" class="sel-blurb"></div>
               <div id="selExtra" class="sel-extra"></div>
-              <button id="prodBtn" class="pixel-btn tiny sel-action" hidden></button>
+              <div class="sel-actions">
+                <button id="prodBtn" class="pixel-btn tiny" hidden></button>
+                <button id="razeBtn" class="pixel-btn tiny danger" hidden></button>
+              </div>
             </div>
           </div>
           <div id="selGroup" class="sel-group" hidden></div>
@@ -96,15 +99,46 @@ export class Hud {
       modeHint: this.root.querySelector('#modeHint'),
       menuBtn: this.root.querySelector('#menuBtn'),
       prodBtn: this.root.querySelector('#prodBtn'),
+      razeBtn: this.root.querySelector('#razeBtn'),
+      topbar: this.root.querySelector('#topbar'),
     };
     this.prodTarget = 0;
+    /** Demolition is armed by a first click and confirmed by a second. */
+    this.razeArmedUntil = 0;
 
     this.buildButtons();
     this.bindMinimap();
     this.el.menuBtn.addEventListener('click', () => { audio.play('click'); this.game.toggleMenu(); });
     this.el.prodBtn.addEventListener('click', () => { audio.play('click'); this.game.toggleProduction(); });
+    this.el.razeBtn.addEventListener('click', () => this.onRazeClicked());
     this.mmCtx = this.el.minimap.getContext('2d');
     this.mmCtx.imageSmoothingEnabled = false;
+
+    this.layoutTopbar();
+    this.onResize = () => this.layoutTopbar();
+    window.addEventListener('resize', this.onResize);
+  }
+
+  /**
+   * Re-composes the scroll behind the resource readout at the bar's real size.
+   * The art is placed rather than stretched, so this has to be redone whenever
+   * the window changes width.
+   */
+  layoutTopbar() {
+    const bar = this.el.topbar;
+    if (!bar) return;
+    // Keep the art at a fixed scale and vary the width instead: scaling the
+    // pieces down thins the curl until it reads as a dashed line, not a roll.
+    // The right-hand gap leaves the sound button its corner.
+    const room = Math.max(360, Math.min(window.innerWidth - 140, 1080));
+    const scroll = scrollBarURL(room, 0.5);
+    bar.style.width = scroll.width + 'px';
+    bar.style.height = scroll.height + 'px';
+    bar.style.backgroundImage = `url(${scroll.url})`;
+    // Keep the readout on the flat parchment, clear of the curl and the ends.
+    bar.style.paddingLeft = Math.round(scroll.capLeft * 0.9) + 'px';
+    bar.style.paddingRight = Math.round(scroll.capRight * 0.9) + 'px';
+    bar.style.paddingBottom = (scroll.height - scroll.contentHeight) + 'px';
   }
 
   buildButtons() {
@@ -269,6 +303,7 @@ export class Hud {
     this.el.selHp.style.background = frac > 0.6 ? '#67c46b' : frac > 0.3 ? '#e0b84a' : '#d1584f';
     this.el.selExtra.textContent = this.extraText(e, def);
     this.syncProductionButton(e);
+    this.syncRazeButton(e);
   }
 
   showSingle(e) {
@@ -284,6 +319,7 @@ export class Hud {
     if (portrait) this.el.selPortrait.src = portrait;
     this.el.selExtra.textContent = this.extraText(e, def);
     this.syncProductionButton(e);
+    this.syncRazeButton(e);
   }
 
   extraText(e, def) {
@@ -304,6 +340,21 @@ export class Hud {
   }
 
   /**
+   * Demolition asks twice. Pulling down a barracks you have paid for is not
+   * something to lose to a stray click, and there is no undo.
+   */
+  onRazeClicked() {
+    if (performance.now() < this.razeArmedUntil) {
+      this.razeArmedUntil = 0;
+      audio.play('buildingDestroyed');
+      this.game.demolishSelected();
+      return;
+    }
+    audio.play('deny');
+    this.razeArmedUntil = performance.now() + 4000;
+  }
+
+  /**
    * A producing building gets a halt/resume control. Training spends resources
    * on a timer, so being able to shut it off is what lets a player bank for
    * something else.
@@ -318,6 +369,18 @@ export class Hud {
     this.prodTarget = e.id;
     btn.textContent = e.paused ? 'Resume training (P)' : 'Halt training (P)';
     btn.classList.toggle('danger', !e.paused);
+  }
+
+  /** The demolish control, shown for any of your own buildings but the castle. */
+  syncRazeButton(e) {
+    const btn = this.el.razeBtn;
+    const canRaze = !e.type && e.kind !== 'castle' && e.owner === this.game.localPlayerId;
+    btn.hidden = !canRaze;
+    if (!canRaze) { this.razeArmedUntil = 0; return; }
+    const armed = performance.now() < this.razeArmedUntil;
+    const refund = e.done ? ' (half back)' : ' (refunded)';
+    btn.textContent = armed ? 'Click again to confirm' : 'Demolish' + refund;
+    btn.classList.toggle('armed', armed);
   }
 
   // -- feedback --------------------------------------------------------------

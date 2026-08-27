@@ -13,9 +13,17 @@ import {
   TILE, MAP_TILES, UNITS, BUILDINGS, GATHER, BUILD_RATE, CMD, ST,
   START_RESOURCES, BASE_POP_CAP, POP_PER_HOUSE, MAX_POP_CAP, RESOURCES,
   TOWER_ATTACK, LANCER_GUARD_ARMOR, RALLY_SPREAD, NODE_SLOTS, LEVEL,
-  MAX_PAWNS_PER_BASE,
+  MAX_PAWNS_PER_BASE, DEMOLISH_REFUND,
 } from './consts.js';
 import { NavGrid, tileIndexAt, tileCenter } from './pathfind.js';
+
+/**
+ * How close a drone must get to a footprint to work it. A shade over one tile,
+ * so a worker standing on any adjacent tile - including a diagonal one - counts
+ * as having arrived.
+ */
+const BUILD_RANGE = TILE * 1.1;
+const DELIVER_RANGE = TILE * 1.1;
 
 /** Cell size for the unit lookup grid. Comfortably above the largest range. */
 const HASH = 128;
@@ -286,6 +294,20 @@ export class Sim {
         b.paused = cmd.on === undefined ? !b.paused : !!cmd.on;
         break;
       }
+      case CMD.DEMOLISH: {
+        const b = this.buildings.get(cmd.id);
+        // Your castle is your life in this game; it is not yours to knock down.
+        if (!b || b.owner !== playerId || b.kind === 'castle') break;
+        if (!b.done) {
+          // Still a foundation: this is a cancellation, refunded by progress.
+          this.refund(player, b.def.cost, 1 - b.progress / Math.max(1, b.def.buildPoints));
+        } else {
+          this.refund(player, b.def.cost, DEMOLISH_REFUND);
+        }
+        for (const u of this.units.values()) if (u.buildId === b.id) this.clearWork(u);
+        this.destroyBuilding(b);
+        break;
+      }
       case CMD.CANCEL_BUILD: {
         const b = this.buildings.get(cmd.id);
         if (!b || b.owner !== playerId || b.done || b.kind === 'castle') break;
@@ -332,6 +354,10 @@ export class Sim {
     if (def.requiresPop && player.pop < def.requiresPop) { refuse(); return; }
     if (!this.canAfford(player, def.cost)) { refuse(); return; }
     if (!this.footprintFree(tx, ty, def.foot)) { refuse(); return; }
+    // A site nobody can stand beside can never be built, so it is not a legal
+    // place to put one - better to refuse the click than bank the cost in a
+    // foundation that will sit there forever.
+    if (!this.hasApproach(tx, ty, def.foot)) { refuse(); return; }
 
     this.charge(player, def.cost);
     const b = this.addBuilding(player.id, kind, tx, ty, false);
@@ -354,6 +380,12 @@ export class Sim {
       }
     }
     return true;
+  }
+
+  /** True when at least one tile beside a footprint can be stood on. */
+  hasApproach(tx, ty, foot) {
+    const centre = ((ty + foot[1] / 2) * TILE);
+    return this.nav.nearestApproach(tx, ty, foot, (tx + foot[0] / 2) * TILE, centre, 1) >= 0;
   }
 
   nearestIdlePawns(ownerId, x, y, count) {
@@ -579,8 +611,8 @@ export class Sim {
       }
       return;
     }
-    const reach = this.reachDistance(u, target);
-    const d = Math.hypot(target.x - u.x, target.y - u.y);
+    const reach = this.reachDistance(u);
+    const d = this.surfaceDistance(u, target);
     if (d <= reach) {
       u.path = null;
       if (u.cooldown <= 0) { this.beginAttack(u, target); return; }
@@ -738,9 +770,8 @@ export class Sim {
   updateReturn(u, dt) {
     const drop = this.nearestDropoff(u);
     if (!drop) { this.setState(u, ST.IDLE); return; }
-    const d = Math.hypot(drop.x - u.x, drop.y - u.y);
-    const reach = (Math.max(drop.def.foot[0], drop.def.foot[1]) * TILE) / 2 + 44;
-    if (d <= reach) {
+    const d = this.footprintDistance(u.x, u.y, drop.tx, drop.ty, drop.def.foot);
+    if (d <= DELIVER_RANGE) {
       const player = this.players.get(u.owner);
       const kind = RESOURCES[u.carryKind - 1];
       if (player && kind) {
@@ -792,15 +823,16 @@ export class Sim {
   updateBuildGo(u, dt) {
     const b = this.buildings.get(u.buildId);
     if (!b || b.done) { this.clearWork(u); this.setState(u, ST.IDLE); return; }
-    const reach = (Math.max(b.def.foot[0], b.def.foot[1]) * TILE) / 2 + 46;
-    if (Math.hypot(b.x - u.x, b.y - u.y) <= reach) {
+    if (this.footprintDistance(u.x, u.y, b.tx, b.ty, b.def.foot) <= BUILD_RANGE) {
       u.path = null;
       this.face(u, b.x, b.y);
       this.setState(u, ST.BUILD_WORK);
       return;
     }
     if (this.followPath(u, dt)) {
-      if (++u.approachTries > 3 || !this.approach(u, b.tx, b.ty, b.def.foot)) {
+      // Arrived at the reserved spot but still short: try another way in a few
+      // times before giving the job up, since another drone may be in the way.
+      if (++u.approachTries > 6 || !this.approach(u, b.tx, b.ty, b.def.foot)) {
         this.clearWork(u);
         this.setState(u, ST.IDLE);
       }
@@ -926,12 +958,34 @@ export class Sim {
 
   // -- combat ----------------------------------------------------------------
 
-  /** Distance at which `u` can strike `target`, measured surface to surface. */
-  reachDistance(u, target) {
-    const half = target.def.foot
-      ? (Math.max(target.def.foot[0], target.def.foot[1]) * TILE) / 2
-      : target.def.radius;
-    return u.def.range + u.def.radius + half;
+  /**
+   * Distance from a point to the edge of a tile footprint, zero inside it.
+   *
+   * Buildings are rectangles, and measuring them as circles from the centre is
+   * wrong in the worst place: a worker routed to a diagonal corner tile sits
+   * further from the centre than one on a flat side, so a centre-radius test
+   * says it has not arrived and it turns around. That was the bug behind
+   * drones walking up to a site and wandering off again.
+   */
+  footprintDistance(x, y, tx, ty, foot) {
+    const x0 = tx * TILE, y0 = ty * TILE;
+    const x1 = x0 + foot[0] * TILE, y1 = y0 + foot[1] * TILE;
+    const dx = Math.max(x0 - x, 0, x - x1);
+    const dy = Math.max(y0 - y, 0, y - y1);
+    return Math.hypot(dx, dy);
+  }
+
+  /** Surface-to-surface distance between a unit and any entity. */
+  surfaceDistance(u, target) {
+    if (target.def.foot) {
+      return this.footprintDistance(u.x, u.y, target.tx, target.ty, target.def.foot);
+    }
+    return Math.max(0, Math.hypot(target.x - u.x, target.y - u.y) - target.def.radius);
+  }
+
+  /** How close `u` must be, surface to surface, before it can strike. */
+  reachDistance(u) {
+    return u.def.range + u.def.radius;
   }
 
   findTarget(u, radius) {
@@ -949,8 +1003,7 @@ export class Sim {
     if (best) return best;
     for (const b of this.buildings.values()) {
       if (b.owner === ownerId || b.hp <= 0) continue;
-      const half = (Math.max(b.def.foot[0], b.def.foot[1]) * TILE) / 2;
-      const d = Math.max(0, Math.hypot(b.x - x, b.y - y) - half);
+      const d = this.footprintDistance(x, y, b.tx, b.ty, b.def.foot);
       if (d < radius && d * d < bestD) { bestD = d * d; best = b; }
     }
     return best;

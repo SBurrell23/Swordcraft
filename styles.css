@@ -124,6 +124,10 @@ canvas#world[hidden] { display: none; }
 .title-screen { gap: 10px; }
 /* The title rides on the pack's sword plaque. The sword occupies the left
    sixth of that art, so the text is inset past it rather than centred. */
+/* The title rides on the pack's sword plaque. The plaque is composed at a
+   fixed 760x128 and scaled uniformly, so the sword always occupies the same
+   fraction of the width - which is what lets a percentage inset keep the text
+   on the paper at any window size. */
 .plaque-title {
   width: min(94vw, 720px);
   aspect-ratio: 760 / 128;
@@ -131,15 +135,17 @@ canvas#world[hidden] { display: none; }
   background-size: 100% 100%;
   background-repeat: no-repeat;
   display: grid;
-  align-items: center;
-  padding: 0 6% 2% 17%;
+  place-items: center;
+  padding: 0 12.1% 1.5% 13.8%;   /* 92/760 tail, 105/760 sword */
   margin: 0;
   text-shadow: none;
 }
 .plaque-title span {
-  font-size: clamp(18px, 4.4vw, 40px);
+  font-size: clamp(16px, 4vw, 38px);
+  line-height: 1;
   color: #7a4a2c;
   text-shadow: 0 2px 0 rgba(255, 250, 235, .65);
+  white-space: nowrap;
 }
 .tagline { margin: 0 0 6px; color: var(--parchment-dim); font-size: 14px; letter-spacing: .06em; }
 .credit { margin: 12px 0 0; font-size: 11px; color: #7d8fa0; }
@@ -163,14 +169,16 @@ canvas#world[hidden] { display: none; }
   border-image-repeat: stretch;
   padding: 4px 10px 8px;
 }
-/* `round` tiles the plank texture to whole repetitions instead of smearing a
-   single stretched copy across the whole panel. */
+/* Border widths close to the source slices (84/84/103/84), so the planks are
+   drawn near their native size instead of being crushed into a thin frame.
+   `repeat` tiles the middle at a fixed size rather than smearing one copy. */
 .wood-panel {
   border-style: solid;
-  border-width: 20px 20px 24px 20px;
+  border-width: 34px 34px 42px 34px;
   border-image-source: var(--wood-src);
   border-image-slice: var(--wood-slice) fill;
-  border-image-repeat: round;
+  border-image-repeat: repeat;
+  image-rendering: pixelated;
 }
 .scroll-panel {
   border-style: solid;
@@ -384,16 +392,22 @@ canvas#world[hidden] { display: none; }
 #hud[hidden] { display: none; }
 #hud button, #hud canvas, #hud .wood-panel, #hud .scroll-panel { pointer-events: auto; }
 
+/* The scroll behind the readout is composed pixel-exactly in a canvas (see
+   scrollBarURL) and simply painted here, so nothing is stretched. The padding
+   keeps the contents clear of the rolled caps at either end. */
+/* The scroll behind the readout is composed pixel-exactly in a canvas (see
+   scrollBarURL) and painted here at its natural size, so nothing is stretched.
+   Padding is set from the composition so the contents clear the curled ends. */
 #topbar {
   position: absolute;
   top: 0; left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 2px 14px;
-  min-width: min(84vw, 880px);
-  border-width: 18px 22px 18px 22px;
+  gap: 20px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  pointer-events: auto;
 }
 .res-group { display: flex; gap: 14px; align-items: center; }
 .res { display: flex; align-items: center; gap: 6px; }
@@ -427,16 +441,15 @@ canvas#world[hidden] { display: none; }
   left: 0; right: 0; bottom: 0;
   display: flex;
   align-items: flex-end;
-  gap: 10px;
-  padding: 0 10px 8px;
+  gap: 0;
+  padding: 0 2px;
 }
-#minimapPanel { padding: 0; border-width: 18px 18px 22px 18px; }
-#minimap { display: block; width: 226px; height: 226px; image-rendering: pixelated; cursor: crosshair; }
+#minimapPanel { padding: 0; }
+#minimap { display: block; width: 212px; height: 212px; image-rendering: pixelated; cursor: crosshair; }
 
 #selectionPanel {
   flex: 1;
-  min-height: 182px;
-  border-width: 18px 18px 22px 18px;
+  min-height: 200px;
   color: #f4e7c9;
 }
 .sel-empty { opacity: .6; font-size: 13px; padding: 8px 4px; }
@@ -475,7 +488,7 @@ canvas#world[hidden] { display: none; }
 }
 .gchip .gcount { font-weight: 700; color: var(--gold); }
 
-#buildPanel { width: 250px; border-width: 18px 18px 22px 18px; }
+#buildPanel { width: 322px; }
 .panel-title {
   font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
   color: #e8d3a2; opacity: .8; margin-bottom: 6px;
@@ -483,13 +496,13 @@ canvas#world[hidden] { display: none; }
 #buildButtons { display: flex; flex-direction: column; gap: 5px; }
 .build-btn {
   display: grid;
-  grid-template-columns: 22px 1fr auto;
+  grid-template-columns: 20px 1fr auto;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  font-size: 13px;
+  gap: 6px;
+  min-height: 34px;
+  font-size: 12.5px;
   border-width: 13px 13px 16px 13px;
-  padding: 0 4px;
+  padding: 0 2px;
   text-align: left;
 }
 .bb-key {
@@ -584,9 +597,11 @@ canvas#world[hidden] { display: none; }
 .result-title.lose { color: #ff9d95; text-shadow: 0 3px 0 #66211d; }
 .result-sub { font-size: 14px; color: #dbe6ee; }
 
-@media (max-width: 900px) {
-  #buildPanel { width: 200px; }
-  #minimap { width: 160px; height: 160px; }
+@media (max-width: 1100px) {
+  .wood-panel { border-width: 26px 26px 32px 26px; }
+  #buildPanel { width: 250px; }
+  #minimap { width: 150px; height: 150px; }
+  #topbar { gap: 12px; padding: 0 72px; }
   .res .amount { font-size: 14px; min-width: 32px; }
 }
 
@@ -642,3 +657,6 @@ canvas#world[hidden] { display: none; }
 #settingsClose { width: 100%; }
 
 .pause-note { font-size: 12px; color: #b6c4ce; margin: 14px 0 0; }
+
+.sel-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.sel-actions .pixel-btn.armed { animation: costflash .5s ease infinite; }

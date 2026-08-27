@@ -162,6 +162,9 @@ export const BUILDINGS = {
   },
 };
 
+/** Share of a building's cost returned when its owner pulls it down. */
+export const DEMOLISH_REFUND = 0.5;
+
 /** Watchtower's own attack. */
 export const TOWER_ATTACK = { damage: 24, range: 320, cooldown: 1.7 };
 
@@ -203,6 +206,7 @@ export const CAMERA = {
 export const CMD = {
   MOVE: 1, ATTACK_MOVE: 2, ATTACK: 3, STOP: 4, HOLD: 5,
   GATHER: 6, BUILD: 7, RALLY: 8, CANCEL_BUILD: 9, TOGGLE_PRODUCTION: 10,
+  DEMOLISH: 11,
 };
 
 /** Unit behaviour states, shared by sim and renderer. */

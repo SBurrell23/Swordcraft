@@ -492,6 +492,18 @@ export class Game {
     }
   }
 
+  /**
+   * Pulls down every owned building in the selection. The HUD arms this behind
+   * a confirmation, because there is no undo for it.
+   */
+  demolishSelected() {
+    for (const b of this.view.buildings) {
+      if (!this.renderer.selection.has(b.id) || b.owner !== this.localPlayerId) continue;
+      if (b.kind === 'castle') continue;
+      this.sendCommand({ t: CMD.DEMOLISH, id: b.id });
+    }
+  }
+
   toggleMenu() {
     const existing = document.getElementById('pauseOverlay');
     if (existing) { existing.remove(); return; }

@@ -34,7 +34,91 @@ export function applySkin() {
   // The teal ribbon row, used as a plaque behind the game title.
   const [ry0, ry1] = RIBBON_ROWS[0];
   s.setProperty('--ribbon-src', `url(${cropDataURL(A.ui.bigRibbons, 0, ry0, 448, ry1 - ry0)})`);
-  s.setProperty('--plaque-src', `url(${swordPlaque(760)})`);
+  s.setProperty('--plaque-src', `url(${swordPlaque(PLAQUE.width)})`);
+}
+
+/**
+ * Proportions of the composed sword plaque. The title text has to sit on the
+ * paper, clear of the sword, and the only way that holds at every window width
+ * is to derive its inset from these numbers rather than eyeball a percentage.
+ */
+export const PLAQUE = { width: 760, height: 128, swordPx: 105, tailPx: 92 };
+
+// ---------------------------------------------------------------------------
+// Composed pieces
+// ---------------------------------------------------------------------------
+
+/**
+ * The Banner sheet's nine pieces, by source rectangle. It is a parchment sheet
+ * whose bottom edge is a curled roll - which is what makes a scroll out of it.
+ */
+const BANNER_X = [[28, 128], [192, 256], [320, 404]];
+const BANNER_Y = [[60, 128], [192, 256], [320, 431]];
+const scrollCache = new Map();
+
+/**
+ * Composes a horizontal scroll: parchment with a rolled edge along the bottom
+ * and a curled end at each corner, sized to the bar it has to sit behind.
+ *
+ * This is drawn into a canvas rather than left to CSS `border-image` on
+ * purpose. `border-image` stretches its slices to whatever border width it is
+ * given, and squeezing 100px of pixel art into a 20px border is exactly what
+ * made the old bar look muddy. Here the pieces are scaled once, by a fixed
+ * factor, and the middle column is *repeated* - so the grain keeps its size no
+ * matter how wide the window gets.
+ *
+ * @param {number} width  target width in CSS pixels
+ * @param {number} scale  how much of the source art's native size to keep
+ * @returns {{url: string, width: number, height: number, capLeft: number, capRight: number}}
+ */
+export function scrollBarURL(width, scale = 0.5) {
+  const key = Math.round(width) + '@' + scale;
+  const hit = scrollCache.get(key);
+  if (hit) return hit;
+
+  const img = A.ui.banner.img;
+  const w = BANNER_X.map(([a, b]) => Math.round((b - a) * scale));
+  const h = BANNER_Y.map(([a, b]) => Math.round((b - a) * scale));
+  // One middle row is enough height for a readout; the bottom row is the curl.
+  const tiles = Math.max(1, Math.ceil((width - w[0] - w[2]) / w[1]));
+
+  const cv = document.createElement('canvas');
+  cv.width = w[0] + tiles * w[1] + w[2];
+  cv.height = h[0] + h[1] + h[2];
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+
+  const put = (col, row, dx, dy, dw, dh) => {
+    const [sx0, sx1] = BANNER_X[col];
+    const [sy0, sy1] = BANNER_Y[row];
+    c.drawImage(img, sx0, sy0, sx1 - sx0, sy1 - sy0, dx, dy, dw, dh);
+  };
+
+  let y = 0;
+  for (let row = 0; row < 3; row++) {
+    put(0, row, 0, y, w[0], h[row]);
+    for (let i = 0; i < tiles; i++) put(1, row, w[0] + i * w[1], y, w[1], h[row]);
+    put(2, row, w[0] + tiles * w[1], y, w[2], h[row]);
+    y += h[row];
+  }
+
+  const out = {
+    url: cv.toDataURL(),
+    width: cv.width,
+    height: cv.height,
+    capLeft: w[0],
+    capRight: w[2],
+    // The curled bottom row is decoration; content should stay above it.
+    contentHeight: h[0] + h[1],
+  };
+  if (scrollCache.size > 24) scrollCache.clear();
+  scrollCache.set(key, out);
+  return out;
+}
+
+/** The sword plaque, composed to an exact width so nothing has to stretch. */
+export function swordPlaqueURL(width) {
+  return swordPlaque(Math.max(240, Math.round(width)));
 }
 
 /**

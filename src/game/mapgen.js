@@ -465,7 +465,7 @@ function placeDecor(level, blocked, rand) {
     for (let tx = 2; tx < MAP_TILES - 2; tx++) {
       if (level[idx(tx, ty)] !== LEVEL.WATER) continue;
       const coastal = N8.some(([ox, oy]) => level[idx(tx + ox, ty + oy)] !== LEVEL.WATER);
-      if (rand() > (coastal ? 0.34 : 0.07)) continue;
+      if (rand() > (coastal ? 0.15 : 0.02)) continue;
       decor.push({
         kind: 'waterRock', variant: (rand() * 4) | 0,
         x: (tx + 0.2 + rand() * 0.6) * TILE,
