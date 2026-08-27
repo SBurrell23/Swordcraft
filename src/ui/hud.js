@@ -7,7 +7,7 @@
 // URLs that `border-image` can use directly.
 
 import { A, ICON, COLOR_HEX, cropDataURL } from '../game/assets.js';
-import { BUILDINGS, UNITS, BUILD_MENU, RESOURCES, TILE, MAP_TILES } from '../game/consts.js';
+import { BUILDINGS, UNITS, BUILD_MENU, RESOURCES, TILE, MAP_TILES, MAX_POP_CAP } from '../game/consts.js';
 import { audio } from '../game/audio.js';
 import { avatarURL, scrollBarURL } from './skin.js';
 
@@ -42,6 +42,7 @@ export class Hud {
           <div class="res pop" title="Population">
             <img class="icon" alt="" src="${iconURL(ICON.shield)}">
             <span class="amount" data-amount="pop">0/0</span>
+            <span class="pop-max" hidden>MAX</span>
           </div>
         </div>
         <div id="playerchips"></div>
@@ -114,6 +115,7 @@ export class Hud {
       prodBtn: this.root.querySelector('#prodBtn'),
       razeBtn: this.root.querySelector('#razeBtn'),
       topbar: this.root.querySelector('#topbar'),
+      popMax: this.root.querySelector('.pop-max'),
       counts: Object.fromEntries(['peasants', 'army', 'all'].map((k) =>
         [k, this.root.querySelector(`[data-count="${k}"]`)])),
     };
@@ -217,7 +219,18 @@ export class Hud {
         if (el.textContent !== String(v)) el.textContent = v;
       }
       this.el.amounts.pop.textContent = `${me.pop}/${me.popCap}`;
-      this.el.amounts.pop.parentElement.classList.toggle('capped', me.pop >= me.popCap);
+      // Two different problems wearing the same number. Full but able to build
+      // another house reads as a red count - go build one. Full at the hard
+      // ceiling reads as MAX, because no house is going to help.
+      const full = me.pop >= me.popCap;
+      const maxed = full && me.popCap >= MAX_POP_CAP;
+      const chip = this.el.amounts.pop.parentElement;
+      chip.classList.toggle('capped', full);
+      chip.classList.toggle('maxed', maxed);
+      chip.title = maxed ? `Population ${me.pop}/${me.popCap} - the hard ceiling; houses will not raise it`
+        : full ? `Population ${me.pop}/${me.popCap} - build a house to train more`
+          : 'Population';
+      this.el.popMax.hidden = !maxed;
     }
     this.updateAffordability(me);
     this.updateQuickCounts(view);

@@ -397,6 +397,19 @@ canvas#world[hidden] { display: none; }
   min-width: 40px;
 }
 .res.pop.capped .amount { color: #a8322a; }
+/* Stamped rather than coloured: at the hard ceiling there is nothing to do
+   about it, so the readout should say so outright. */
+.pop-max {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: #f6ecd2;
+  background: #a8322a;
+  border-radius: 3px;
+  padding: 2px 5px;
+  margin-left: -2px;
+}
+.pop-max[hidden] { display: none; }
 
 #playerchips { display: flex; gap: 10px; margin-left: auto; }
 .chip {
