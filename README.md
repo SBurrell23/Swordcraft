@@ -42,7 +42,7 @@ connected, game traffic is a direct browser-to-browser data channel.
 | `Y` then click | set a building's rally point |
 | `P` | halt or resume training at the selected building |
 | `Delete` | cancel a building under construction |
-| Demolish button | pull down one of your own buildings (asks twice) |
+| Demolish button | pull down one of your own buildings, half the cost back |
 | `Ctrl`+`1`–`9` / `1`–`9` | make / recall a control group |
 | `F` / `Space` | centre on selection / on your base |
 | Arrows, screen edge, middle-drag | pan · mouse wheel zooms |
@@ -52,6 +52,11 @@ Music and effect levels live behind the gear button in the corner, on every
 screen, and are remembered between sessions.
 
 ## How a match works
+
+**The opening.** Everyone starts with five drones and a small stake — 60 wood
+and 50 gold, enough for a single house or most of one drone and nothing more.
+The first minutes are about getting income running, not spending a treasury you
+were handed.
 
 **Drones.** Your castle trains Pawns on a timer. Left alone they choose their
 own job — whichever resource you are shortest of, at the nearest seam with a
@@ -64,8 +69,7 @@ walk over, hammer in hand, and raise it. Once finished, a production building
 trains its unit on a timer and pays that unit's cost each time. That is a real
 drain, so `P` halts a building when you would rather bank for something else.
 Every building shows a countdown to its next unit above its roof, and selecting
-one of your own offers a **Demolish** control - half the cost back, and it asks
-twice, because there is no undo.
+one of your own offers a **Demolish** control, which hands back half the cost.
 
 Whatever the cursor is over is framed with corner brackets, and the camera will
 not pull back far enough to show more than half the island at once.

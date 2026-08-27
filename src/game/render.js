@@ -190,6 +190,10 @@ export class Renderer {
     this.dpr = dpr;
     this.camera.vw = w;
     this.camera.vh = h;
+    // The zoom floor is derived from the viewport, which is not known until
+    // now - so without this the first frames render further out than the rules
+    // allow and only snap in once something moves the camera.
+    this.camera.clamp();
   }
 
   /**

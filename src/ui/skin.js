@@ -31,18 +31,10 @@ export function applySkin() {
     s.setProperty(`--${name}-slice`, slice.join(' '));
   }
 
-  // The teal ribbon row, used as a plaque behind the game title.
+  // The teal ribbon row, kept for anywhere a coloured label is wanted.
   const [ry0, ry1] = RIBBON_ROWS[0];
   s.setProperty('--ribbon-src', `url(${cropDataURL(A.ui.bigRibbons, 0, ry0, 448, ry1 - ry0)})`);
-  s.setProperty('--plaque-src', `url(${swordPlaque(PLAQUE.width)})`);
 }
-
-/**
- * Proportions of the composed sword plaque. The title text has to sit on the
- * paper, clear of the sword, and the only way that holds at every window width
- * is to derive its inset from these numbers rather than eyeball a percentage.
- */
-export const PLAQUE = { width: 760, height: 128, swordPx: 105, tailPx: 92 };
 
 // ---------------------------------------------------------------------------
 // Composed pieces
@@ -116,31 +108,6 @@ export function scrollBarURL(width, scale = 0.5) {
   return out;
 }
 
-/** The sword plaque, composed to an exact width so nothing has to stretch. */
-export function swordPlaqueURL(width) {
-  return swordPlaque(Math.max(240, Math.round(width)));
-}
-
-/**
- * The Swords sheet is a horizontal 3-slice - a sword cap, a stretchable middle
- * and a pointed tail - laid out with gaps. Composes it into one plaque of the
- * requested width, used as a divider.
- */
-function swordPlaque(width, row = 0) {
-  const sheet = A.ui.swords;
-  const y = row * 128;
-  const left = [23, 128], mid = [192, 256], right = [320, 412];
-  const lw = left[1] - left[0], rw = right[1] - right[0];
-  const cv = document.createElement('canvas');
-  cv.width = width; cv.height = 128;
-  const c = cv.getContext('2d');
-  c.imageSmoothingEnabled = false;
-  const midW = Math.max(0, width - lw - rw);
-  c.drawImage(sheet.img, left[0], y, lw, 128, 0, 0, lw, 128);
-  if (midW > 0) c.drawImage(sheet.img, mid[0], y, mid[1] - mid[0], 128, lw, 0, midW, 128);
-  c.drawImage(sheet.img, right[0], y, rw, 128, lw + midW, 0, rw, 128);
-  return cv.toDataURL();
-}
 
 /**
  * Cursor art, cropped to its content and scaled up, with a hotspot chosen to

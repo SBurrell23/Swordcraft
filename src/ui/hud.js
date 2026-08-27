@@ -49,11 +49,11 @@ export class Hud {
       </div>
 
       <div id="bottombar">
-        <div id="minimapPanel" class="wood-panel">
+        <div id="minimapPanel" class="slate-panel">
           <canvas id="minimap" width="240" height="240"></canvas>
         </div>
 
-        <div id="selectionPanel" class="wood-panel">
+        <div id="selectionPanel" class="slate-panel">
           <div id="selEmpty" class="sel-empty">Nothing selected</div>
           <div id="selSingle" class="sel-single" hidden>
             <img id="selPortrait" alt="">
@@ -71,7 +71,7 @@ export class Hud {
           <div id="selGroup" class="sel-group" hidden></div>
         </div>
 
-        <div id="buildPanel" class="wood-panel">
+        <div id="buildPanel" class="slate-panel">
           <div class="panel-title">Build</div>
           <div id="buildButtons"></div>
         </div>
@@ -103,8 +103,6 @@ export class Hud {
       topbar: this.root.querySelector('#topbar'),
     };
     this.prodTarget = 0;
-    /** Demolition is armed by a first click and confirmed by a second. */
-    this.razeArmedUntil = 0;
 
     this.buildButtons();
     this.bindMinimap();
@@ -339,19 +337,9 @@ export class Hud {
     return parts.join('  ·  ');
   }
 
-  /**
-   * Demolition asks twice. Pulling down a barracks you have paid for is not
-   * something to lose to a stray click, and there is no undo.
-   */
   onRazeClicked() {
-    if (performance.now() < this.razeArmedUntil) {
-      this.razeArmedUntil = 0;
-      audio.play('buildingDestroyed');
-      this.game.demolishSelected();
-      return;
-    }
-    audio.play('deny');
-    this.razeArmedUntil = performance.now() + 4000;
+    audio.play('buildingDestroyed');
+    this.game.demolishSelected();
   }
 
   /**
@@ -376,11 +364,8 @@ export class Hud {
     const btn = this.el.razeBtn;
     const canRaze = !e.type && e.kind !== 'castle' && e.owner === this.game.localPlayerId;
     btn.hidden = !canRaze;
-    if (!canRaze) { this.razeArmedUntil = 0; return; }
-    const armed = performance.now() < this.razeArmedUntil;
-    const refund = e.done ? ' (half back)' : ' (refunded)';
-    btn.textContent = armed ? 'Click again to confirm' : 'Demolish' + refund;
-    btn.classList.toggle('armed', armed);
+    if (!canRaze) return;
+    btn.textContent = 'Demolish' + (e.done ? ' (half back)' : ' (refunded)');
   }
 
   // -- feedback --------------------------------------------------------------

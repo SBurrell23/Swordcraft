@@ -38,7 +38,7 @@ export class Menu {
     const name = this.app.playerName;
     this.show(`
       <div class="screen title-screen">
-        <h1 class="game-title plaque-title"><span>Swordcraft</span></h1>
+        <h1 class="game-title">Swordcraft</h1>
         ${error ? `<div class="error-note">${escapeHtml(error)}</div>` : ''}
         <div class="panel banner-panel title-panel">
           <label class="field">

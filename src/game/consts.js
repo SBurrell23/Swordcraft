@@ -22,7 +22,12 @@ export const LEVEL = { WATER: 0, GROUND: 1 };
 /** Resource kinds, in HUD order. */
 export const RESOURCES = ['wood', 'gold'];
 
-export const START_RESOURCES = { wood: 360, gold: 320 };
+/**
+ * What everyone starts with. Deliberately small - enough for one house or most
+ * of a drone and nothing else - so the opening minutes are about getting the
+ * economy running rather than spending a treasury you were handed.
+ */
+export const START_RESOURCES = { wood: 60, gold: 50 };
 
 /** Population: houses raise the cap, units consume it. */
 export const BASE_POP_CAP = 20;
@@ -196,7 +201,9 @@ export const NODE_SLOTS = { wood: 1, gold: 3 };
 export const CAMERA = {
   minZoom: 0.42,
   maxZoom: 1.15,
-  startZoom: 0.62,
+  // Comfortably closer than the zoom floor, so a match opens on your base
+  // rather than pinned to the furthest view the rules allow.
+  startZoom: 0.85,
   panSpeed: 1500,      // px/sec at zoom 1 via keyboard
   edgeMargin: 14,      // px from the window edge that starts an edge-scroll
   edgeSpeed: 1150,
