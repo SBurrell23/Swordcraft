@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+# Swordcraft has no build step - it is plain ES modules, images and two MP3s -
+# so the workflow uploads the repository as-is. Every path in the project is
+# relative, which is what lets it work unchanged under a /Swordcraft/ sub-path.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Sanity-check the game logic without a browser
+        run: |
+          node tools/mapcheck.js 5
+          node tools/simtest.js 3
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
