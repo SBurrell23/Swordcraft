@@ -11,7 +11,7 @@
 
 import { generateMap } from '../src/game/mapgen.js';
 import { Sim } from '../src/game/sim.js';
-import { TICK_DT, BUILDINGS, CMD, MAP_TILES } from '../src/game/consts.js';
+import { TICK_DT, BUILDINGS, CMD } from '../src/game/consts.js';
 
 const seeds = Number(process.argv[2] || 6);
 const KINDS = ['house', 'outpost', 'barracks', 'archery', 'tower'];
@@ -25,7 +25,7 @@ const failures = [];
 // including the four diagonal corners - must read as having arrived. This is
 // the precise thing the old centre-radius test got wrong.
 {
-  const map = generateMap(1);
+  const map = generateMap(1, 1);
   const sim = new Sim(map, [{ id: 1, slot: 0, name: 'P1', color: 'Black', ai: false }]);
   const TILE = 64;
   for (const [kind, def] of Object.entries(BUILDINGS)) {
@@ -49,7 +49,7 @@ const failures = [];
 
 for (let s = 0; s < seeds; s++) {
   const seed = 4000 + s * 1237;
-  const map = generateMap(seed);
+  const map = generateMap(seed, 1);
 
   for (const kind of KINDS) {
     const def = BUILDINGS[kind];
@@ -102,7 +102,7 @@ function findSpot(sim, foot) {
       const a = (k / 24) * Math.PI * 2;
       const tx = Math.round(cx + Math.cos(a) * r);
       const ty = Math.round(cy + Math.sin(a) * r);
-      if (tx < 1 || ty < 1 || tx + foot[0] >= MAP_TILES || ty + foot[1] >= MAP_TILES) continue;
+      if (tx < 1 || ty < 1 || tx + foot[0] >= sim.map.tiles || ty + foot[1] >= sim.map.tiles) continue;
       if (sim.footprintFree(tx, ty, foot) && sim.hasApproach(tx, ty, foot)) return [tx, ty];
     }
   }

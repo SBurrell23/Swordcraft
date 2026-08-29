@@ -231,6 +231,9 @@ export class Net extends EventTarget {
   }
 
   /** Host: send to one guest. */
+  /** Peer ids still connected, host side. */
+  peerIds() { return [...this.conns.keys()]; }
+
   sendTo(peerId, payload) {
     const conn = this.conns.get(peerId);
     if (conn && conn.open) safeSend(conn, payload);

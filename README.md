@@ -38,24 +38,24 @@ connected, game traffic is a direct browser-to-browser data channel.
 | `A` then click | attack-move |
 | `S` / `G` | stop / hold ground |
 | `Tab` | select your whole army |
-| Peasants / Army / All | select every unit of that kind, and jump the camera to them |
+| Console buttons | select every Peasant, Army, Melee, Ranged, Caster or All unit you own |
 | `H` `O` `B` `R` `T` `M` | place house, outpost, barracks, archery range, watchtower, monastery |
 | `Y` then click | set a building's rally point |
 | `P` | halt or resume training at the selected building |
 | `Delete` | cancel a building under construction |
 | Demolish button | pull down one of your own buildings, half the cost back |
-| `Ctrl`+`1`–`9` / `1`–`9` | make / recall a control group |
 | `F` / `Space` | centre on selection / on your base |
 | Arrows, screen edge, middle-drag | pan · mouse wheel zooms |
 | `Esc` | cancel the current tool, or open the menu |
 
 Music and effect levels live behind the gear button in the corner, on every
-screen, and are remembered between sessions.
+screen, and are remembered between sessions. So does the battle theme: five
+tracks, or **Shuffle** to draw a different one each match.
 
 ## How a match works
 
 **The opening.** Everyone starts with five peasants and a small stake — 60 wood
-and 50 gold, enough for a single house or most of one peasant and nothing more.
+and 50 gold, enough for a single house or one peasant and nothing more.
 The first minutes are about getting income running, not spending a treasury you
 were handed.
 
@@ -65,6 +65,14 @@ free slot — and rethink it after every delivery, so income stays balanced
 without micromanagement. Right-click a tree or a gold seam to direct one
 yourself; it will stay there until the seam runs dry.
 
+**Two resources, both worth having.** Wood is the bulk material — almost
+everything is mostly a wood bill — and gold is the smaller, sharper cost on top.
+It used to be the other way round in practice: gold was the only resource
+anybody thought about and wood piled up unspent. Costs moved onto wood, gold
+seams became more common, and a stand of trees now holds 620 rather than 420.
+In a twenty-minute AI match both now hover near zero, which is what balance
+looks like.
+
 **Buildings.** Placing one costs resources immediately and the nearest peasants
 walk over, hammer in hand, and raise it. Once finished, a production building
 trains its unit on a timer and pays that unit's cost each time. That is a real
@@ -72,10 +80,12 @@ drain, so `P` halts a building when you would rather bank for something else.
 Every building shows a countdown to its next unit above its roof, and selecting
 one of your own offers a **Demolish** control, which hands back half the cost.
 
-**Rounding up.** The console carries three buttons - **Peasants**, **Army**,
-**All** - each of which selects every unit of that kind you own and moves the
-camera to them, so an attack does not start with hunting for stragglers. Each
-button shows its live count.
+**Rounding up.** The console carries six buttons - **Peasants**, **Army**,
+**Melee**, **Ranged**, **Casters**, **All** - each of which selects every unit
+of that kind you own, so an attack does not start with hunting for stragglers.
+Each shows its live count, which makes the row double as a readout of what your
+army is actually made of. They deliberately leave the camera where it is: you
+often want to grab a group while watching somewhere else.
 
 Whatever the cursor is over is framed with corner brackets — buildings, units,
 and resource seams alike, so it is obvious which things a peasant can be put on.
@@ -97,13 +107,20 @@ its cost and stays locked until you meet it.
 
 **Terrain.** Rivers and lakes cut the island into regions joined by a handful of
 land bridges. Water is impassable, so those crossings are where the fighting
-happens.
+happens. You cannot drop a building on ground an enemy is standing on, so
+foundations are not a way to shove an army apart.
+
+**The island fits the table.** Its size and shape follow the number of seats:
+two players get a 60x60 duelling bar along one diagonal, three a 74x74
+triangle, four an 85x85 island with a corner each. Fewer players get a smaller
+map rather than the same one with empty quarters - a duel on a four-player map
+is mostly walking.
 
 ## The four units
 
 | Unit | Role |
 |---|---|
-| **Warrior** | Melee specialist with unstoppable offensive power. |
+| **Warrior** | Melee specialist. Its swing cleaves every enemy in the arc, so a block of them is worth more than the sum of its parts. |
 | **Lancer** | Defensive expert; braces when holding ground, blunting all damage. |
 | **Archer** | Long-range, kills from a distance with real arrow projectiles. |
 | **Monk** | Heals the most wounded ally in range. |

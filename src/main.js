@@ -58,6 +58,7 @@ class App {
   // -- single player ---------------------------------------------------------
 
   startSkirmish(aiCount, difficulty, seed, colorIndex) {
+    this.lastSkirmish = { ai: aiCount, level: difficulty, color: colorIndex };
     const players = [{
       id: 1, slot: colorIndex, name: this.playerName,
       color: COLORS[colorIndex], ai: false, host: true,
@@ -100,7 +101,13 @@ class App {
   }
 
   onHostMessage({ fromId, msg }) {
-    if (!this.lobby || msg.t !== MSG.JOIN) return;
+    if (!this.lobby) return;
+    if (msg.t === MSG.SEAT) {
+      const who = this.lobby.players.find((p) => p.peerId === fromId);
+      if (who) this.takeSeat(Number(msg.slot), who.id);
+      return;
+    }
+    if (msg.t !== MSG.JOIN) return;
     if (this.lobby.players.some((p) => p.peerId === fromId)) return;
     const slot = this.freeSlot();
     if (slot < 0) { this.net.sendTo(fromId, { t: MSG.FULL }); return; }
@@ -110,7 +117,7 @@ class App {
       color: COLORS[slot], ai: false, host: false, peerId: fromId,
     });
     this.pushLobby();
-    this.menu.renderSlots(this.lobby);
+    this.refreshLobbyView();
     audio.play('unitReady');
   }
 
@@ -120,7 +127,7 @@ class App {
     this.lobby.players = this.lobby.players.filter((p) => p.peerId !== peerId);
     if (this.lobby.players.length !== before) {
       this.pushLobby();
-      this.menu.renderSlots(this.lobby);
+      this.refreshLobbyView();
     }
   }
 
@@ -139,7 +146,7 @@ class App {
       color: COLORS[slot], ai: true, host: false, peerId: null,
     });
     this.pushLobby();
-    this.menu.renderSlots(this.lobby);
+    this.refreshLobbyView();
   }
 
   removeSlot(slot) {
@@ -149,8 +156,45 @@ class App {
     if (victim.peerId) this.net.sendTo(victim.peerId, { t: MSG.KICK });
     this.lobby.players = this.lobby.players.filter((p) => p.slot !== slot);
     this.pushLobby();
-    this.menu.renderSlots(this.lobby);
+    this.refreshLobbyView();
   }
+
+  /**
+   * Moves a player into an open seat. Colour is the seat, so this is also how
+   * somebody changes colour - and the host arbitrates, because two guests
+   * clicking the same empty slot at once must not both get it.
+   * @param {number} slot
+   * @param {number} [playerId] whom to seat; defaults to whoever asked
+   */
+  takeSeat(slot, playerId = null) {
+    if (!this.lobby) return;
+    if (!this.isHostSide()) {
+      // A guest cannot move itself: it asks, and re-renders when the host says.
+      this.net?.send({ t: MSG.SEAT, slot });
+      return;
+    }
+    const id = playerId ?? 1;
+    const who = this.lobby.players.find((p) => p.id === id);
+    if (!who || slot < 0 || slot >= MAX_PLAYERS) return;
+    if (this.lobby.players.some((p) => p.slot === slot)) return;   // taken
+    who.slot = slot;
+    who.color = COLORS[slot];
+    this.refreshLobbyView();
+    this.pushLobby();
+  }
+
+  /**
+   * Repaints the seat list and, with it, the map preview - the island's size
+   * and shape follow the seat count, so a seat change is a map change.
+   */
+  refreshLobbyView() {
+    if (!this.lobby) return;
+    this.menu.renderSlots(this.lobby);
+    this.menu.paintPreview(this.lobby.seed, Math.max(2, this.lobby.players.length));
+  }
+
+  /** True when this client owns the lobby state rather than mirroring it. */
+  isHostSide() { return !!(this.lobby && this.lobby.code && this.lobby.you === undefined); }
 
   onSeedChanged(seed) {
     if (!this.lobby) return;
@@ -219,7 +263,9 @@ class App {
     if (!msg) return;
     if (msg.t === MSG.LOBBY) {
       this.lobby = { code: msg.code, seed: msg.seed, players: msg.players, you: msg.you };
-      this.menu.updateGuestLobby(this.lobby);
+      // The host may go back to the lobby before this guest has closed its
+      // result card. Keep the state, but do not paint a menu over a live match.
+      if (!this.game) this.menu.updateGuestLobby(this.lobby);
     } else if (msg.t === MSG.START) {
       this.launch({
         seed: msg.seed,
@@ -250,7 +296,9 @@ class App {
     closeSettings();
     this.hudRoot.hidden = false;
     this.canvas.hidden = false;
-    const map = generateMap(seed);
+    // The island's size and shape follow the seat count, so it has to be
+    // generated with the same number every peer agreed on in the lobby.
+    const map = generateMap(seed, players.length);
     this.game = new Game({
       canvas: this.canvas,
       hudRoot: this.hudRoot,
@@ -259,15 +307,44 @@ class App {
     });
   }
 
+  /**
+   * Ends the match and puts the player back where another one starts from,
+   * rather than at the front door. A skirmish returns to its own setup screen
+   * with the settings it just used; a networked game returns to the lobby with
+   * everyone still connected, so a rematch does not mean swapping codes again.
+   */
   endMatch(reason) {
     this.game = null;
     audio.playMusic('lobby');
     this.canvas.hidden = true;
     this.hudRoot.hidden = true;
     this.hudRoot.innerHTML = '';
+
+    const hosting = this.net && this.lobby && this.isHostSide();
+    const guesting = this.net && this.lobby && !this.isHostSide();
+
+    if (hosting) {
+      // Drop anybody whose connection went away during the match, then put the
+      // room back on screen for everyone still in it.
+      const live = this.net.peerIds ? new Set(this.net.peerIds()) : null;
+      if (live) this.lobby.players = this.lobby.players.filter((p) => !p.peerId || live.has(p.peerId));
+      this.lobby.seed = randomSeed();
+      this.menu.showHostLobby(this.lobby);
+      this.pushLobby();
+      if (reason) this.toastInMenu(reason);
+      return;
+    }
+    if (guesting) {
+      // Wait where we are; the host's next lobby push repaints this screen.
+      this.menu.showGuestLobby(this.lobby);
+      if (reason) this.toastInMenu(reason);
+      return;
+    }
+
     this.closeNet();
     this.lobby = null;
-    this.menu.showTitle(reason || undefined);
+    this.menu.showSkirmish(this.lastSkirmish || {});
+    if (reason) this.toastInMenu(reason);
   }
 
   closeNet() {

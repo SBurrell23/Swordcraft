@@ -8,7 +8,7 @@
 // throws it at the nearest enemy castle, and pulls home when its own base is
 // being hit.
 
-import { CMD, BUILDINGS, MAP_TILES, TILE, MAX_POP_CAP } from './consts.js';
+import { CMD, BUILDINGS, TILE, MAX_POP_CAP } from './consts.js';
 
 /** Order in which an AI wants its first buildings. */
 const BUILD_ORDER = [
@@ -111,13 +111,14 @@ export class AI {
    */
   findSpot(castle, foot, far = false) {
     const sim = this.sim;
+    const tiles = sim.map.tiles;
     for (let r = far ? 11 : 3; r < (far ? 24 : 16); r++) {
       // Sample a ring rather than every tile: cheaper, and it spreads the base.
       for (let k = 0; k < 14; k++) {
         const a = (k / 14) * Math.PI * 2 + r * 0.7;
         const tx = Math.round(castle.tx + Math.cos(a) * r);
         const ty = Math.round(castle.ty + Math.sin(a) * r);
-        if (tx < 1 || ty < 1 || tx + foot[0] >= MAP_TILES || ty + foot[1] >= MAP_TILES) continue;
+        if (tx < 1 || ty < 1 || tx + foot[0] >= tiles || ty + foot[1] >= tiles) continue;
         if (sim.footprintFree(tx, ty, foot)) return [tx, ty];
       }
     }
@@ -174,7 +175,7 @@ export class AI {
     if (!castle) return;
     const idle = army.filter((u) => u.st === 0);
     if (idle.length) {
-      const mid = (MAP_TILES * TILE) / 2;
+      const mid = (this.sim.map.tiles * TILE) / 2;
       const dx = Math.sign(mid - castle.x) || 1;
       const dy = Math.sign(mid - castle.y) || 1;
       sim.applyCommand({
@@ -199,8 +200,8 @@ export class AI {
   pickTarget() {
     const sim = this.sim;
     const castle = [...sim.buildings.values()].find((b) => b.owner === this.id && b.kind === 'castle');
-    const ox = castle ? castle.x : (MAP_TILES * TILE) / 2;
-    const oy = castle ? castle.y : (MAP_TILES * TILE) / 2;
+    const ox = castle ? castle.x : (this.sim.map.tiles * TILE) / 2;
+    const oy = castle ? castle.y : (this.sim.map.tiles * TILE) / 2;
 
     let best = null, bestD = Infinity, fallback = null, fallbackD = Infinity;
     for (const b of sim.buildings.values()) {

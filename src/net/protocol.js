@@ -18,6 +18,7 @@ export const MSG = {
   CHAT: 'chat',
   PING: 'ping',
   PONG: 'pong',
+  SEAT: 'seat',
   KICK: 'kick',
   FULL: 'full',
   LEAVE: 'leave',

@@ -4,7 +4,7 @@
 // title screen, the lobby and the middle of a match alike. Levels persist in
 // localStorage, so a player sets them once rather than every session.
 
-import { audio } from '../game/audio.js';
+import { audio, GAME_THEMES } from '../game/audio.js';
 import { A, ICON, cropDataURL } from '../game/assets.js';
 
 let panel = null;
@@ -36,6 +36,13 @@ export function mountSettings() {
         <input type="range" id="volSfx" min="0" max="100" step="1">
         <b id="volSfxVal">0</b>
       </label>
+      <label class="slider-row theme-row">
+        <span>Theme</span>
+        <select id="musicTheme">
+          <option value="shuffle">Shuffle</option>
+          ${GAME_THEMES.map((t) => `<option value="${t.key}">${t.name}</option>`).join('')}
+        </select>
+      </label>
       <button class="pixel-btn tiny" id="settingsClose">Close</button>
     </div>`;
   document.body.appendChild(host);
@@ -47,13 +54,22 @@ export function mountSettings() {
   const musicVal = host.querySelector('#volMusicVal');
   const sfxVal = host.querySelector('#volSfxVal');
 
+  const theme = host.querySelector('#musicTheme');
+
   const sync = () => {
     music.value = Math.round(audio.musicVolume * 100);
     sfx.value = Math.round(audio.sfxVolume * 100);
     musicVal.textContent = music.value;
     sfxVal.textContent = sfx.value;
+    theme.value = audio.gameTheme;
   };
   sync();
+
+  theme.addEventListener('change', () => {
+    audio.init();
+    audio.play('click');
+    audio.setGameTheme(theme.value);
+  });
 
   music.addEventListener('input', () => {
     audio.init();

@@ -7,7 +7,7 @@
 // requests go through a budgeted queue and finished paths are cached briefly
 // and shared by everyone heading to the same tile.
 
-import { MAP_TILES, TILE } from './consts.js';
+import { TILE } from './consts.js';
 import { canStep } from './mapgen.js';
 
 const N8 = [
@@ -60,7 +60,10 @@ export class NavGrid {
   /** @param {import('./mapgen.js').GameMap} map */
   constructor(map) {
     this.map = map;
-    this.n = MAP_TILES * MAP_TILES;
+    /** Grid size for this map. It varies with the number of players, so it is
+        read off the map rather than taken from a module constant. */
+    this.tiles = map.tiles;
+    this.n = this.tiles * this.tiles;
     /** 1 where something solid stands on the tile. */
     this.occupied = new Uint8Array(this.n);
     this.occupied.set(map.blocked);
@@ -81,8 +84,8 @@ export class NavGrid {
   }
 
   setOccupied(tx, ty, on) {
-    if (tx < 0 || ty < 0 || tx >= MAP_TILES || ty >= MAP_TILES) return;
-    const i = ty * MAP_TILES + tx;
+    if (tx < 0 || ty < 0 || tx >= this.tiles || ty >= this.tiles) return;
+    const i = ty * this.tiles + tx;
     const want = on ? 1 : (this.map.blocked[i] ? 1 : 0);
     if (this.occupied[i] === want) return;
     this.occupied[i] = want;
@@ -106,8 +109,8 @@ export class NavGrid {
    * so units never clip a cliff corner or squeeze between two buildings.
    */
   diagonalOk(tx, ty, ox, oy, from) {
-    const a = ty * MAP_TILES + (tx + ox);
-    const b = (ty + oy) * MAP_TILES + tx;
+    const a = ty * this.tiles + (tx + ox);
+    const b = (ty + oy) * this.tiles + tx;
     return this.stepOk(from, a) && this.stepOk(from, b);
   }
 
@@ -129,9 +132,9 @@ export class NavGrid {
       if (start === goal) return [];
     }
 
-    const gx = goal % MAP_TILES, gy = (goal / MAP_TILES) | 0;
+    const gx = goal % this.tiles, gy = (goal / this.tiles) | 0;
     const h = (i) => {
-      const dx = Math.abs((i % MAP_TILES) - gx), dy = Math.abs(((i / MAP_TILES) | 0) - gy);
+      const dx = Math.abs((i % this.tiles) - gx), dy = Math.abs(((i / this.tiles) | 0) - gy);
       // Octile distance: exact for 8-way movement, so A* stays admissible.
       return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy);
     };
@@ -152,11 +155,11 @@ export class NavGrid {
       if (cur === goal) return this.reconstruct(came, start, goal);
       if (++expansions > maxExpansions) break;
 
-      const cx = cur % MAP_TILES, cy = (cur / MAP_TILES) | 0;
+      const cx = cur % this.tiles, cy = (cur / this.tiles) | 0;
       for (const [ox, oy, cost] of N8) {
         const nx = cx + ox, ny = cy + oy;
-        if (nx < 0 || ny < 0 || nx >= MAP_TILES || ny >= MAP_TILES) continue;
-        const nb = ny * MAP_TILES + nx;
+        if (nx < 0 || ny < 0 || nx >= this.tiles || ny >= this.tiles) continue;
+        const nb = ny * this.tiles + nx;
         if (closed[nb] === run) continue;
         if (!this.stepOk(cur, nb)) continue;
         if (ox && oy && !this.diagonalOk(cx, cy, ox, oy, cur)) continue;
@@ -186,14 +189,14 @@ export class NavGrid {
   /** Spiral outward from a tile looking for somewhere a unit could stand. */
   nearestOpen(i, maxRadius = 8) {
     if (this.passable(i)) return i;
-    const cx = i % MAP_TILES, cy = (i / MAP_TILES) | 0;
+    const cx = i % this.tiles, cy = (i / this.tiles) | 0;
     for (let r = 1; r <= maxRadius; r++) {
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const nx = cx + dx, ny = cy + dy;
-          if (nx < 0 || ny < 0 || nx >= MAP_TILES || ny >= MAP_TILES) continue;
-          const j = ny * MAP_TILES + nx;
+          if (nx < 0 || ny < 0 || nx >= this.tiles || ny >= this.tiles) continue;
+          const j = ny * this.tiles + nx;
           if (this.passable(j)) return j;
         }
       }
@@ -217,8 +220,8 @@ export class NavGrid {
         for (let x = x0; x <= x1; x++) {
           // Only the perimeter of this ring is new.
           if (x > x0 && x < x1 && y > y0 && y < y1) continue;
-          if (x < 0 || y < 0 || x >= MAP_TILES || y >= MAP_TILES) continue;
-          const i = y * MAP_TILES + x;
+          if (x < 0 || y < 0 || x >= this.tiles || y >= this.tiles) continue;
+          const i = y * this.tiles + x;
           if (!this.passable(i)) continue;
           const d = ((x + 0.5) * TILE - fromX) ** 2 + ((y + 0.5) * TILE - fromY) ** 2;
           if (d < bestD) { bestD = d; best = i; }
@@ -236,17 +239,17 @@ export class NavGrid {
   lineOfWalk(x0, y0, x1, y1) {
     const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (TILE * 0.5));
     if (steps <= 1) return true;
-    let prev = tileIndexAt(x0, y0);
+    let prev = this.tileIndexAt(x0, y0);
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;
-      const i = tileIndexAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+      const i = this.tileIndexAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
       if (i === prev) continue;
-      const px = prev % MAP_TILES, py = (prev / MAP_TILES) | 0;
-      const nx = i % MAP_TILES, ny = (i / MAP_TILES) | 0;
+      const px = prev % this.tiles, py = (prev / this.tiles) | 0;
+      const nx = i % this.tiles, ny = (i / this.tiles) | 0;
       if (Math.abs(px - nx) + Math.abs(py - ny) > 1) {
         // Cutting a corner: both orthogonal neighbours must also be open.
-        if (!this.stepOk(prev, py * MAP_TILES + nx)) return false;
-        if (!this.stepOk(prev, ny * MAP_TILES + px)) return false;
+        if (!this.stepOk(prev, py * this.tiles + nx)) return false;
+        if (!this.stepOk(prev, ny * this.tiles + px)) return false;
       }
       if (!this.stepOk(prev, i)) return false;
       prev = i;
@@ -264,11 +267,11 @@ export class NavGrid {
       // Look ahead for the furthest waypoint still in plain sight.
       let j = path.length - 1;
       for (; j > i; j--) {
-        const [wx, wy] = tileCenter(path[j]);
+        const [wx, wy] = this.tileCenter(path[j]);
         if (this.lineOfWalk(cx, cy, wx, wy)) break;
       }
       out.push(path[j]);
-      [cx, cy] = tileCenter(path[j]);
+      [cx, cy] = this.tileCenter(path[j]);
       i = j + 1;
     }
     return out;
@@ -291,7 +294,7 @@ export class NavGrid {
     if (this.queue.length > budget) this.queue.sort((a, b) => b.priority - a.priority);
     const batch = this.queue.splice(0, budget);
     for (const req of batch) {
-      const start = tileIndexAt(req.fromX, req.fromY);
+      const start = this.tileIndexAt(req.fromX, req.fromY);
       const key = start * this.n + req.goalTile;
       let path = this.cache.get(key);
       if (path === undefined) {
@@ -305,16 +308,18 @@ export class NavGrid {
   }
 
   clearQueue() { this.queue.length = 0; }
+
+  /** World position -> tile index. */
+  tileIndexAt(x, y) {
+    const tx = Math.max(0, Math.min(this.tiles - 1, (x / TILE) | 0));
+    const ty = Math.max(0, Math.min(this.tiles - 1, (y / TILE) | 0));
+    return ty * this.tiles + tx;
+  }
+
+  /** Tile index -> world centre. */
+  tileCenter(i) {
+    return [((i % this.tiles) + 0.5) * TILE, (((i / this.tiles) | 0) + 0.5) * TILE];
+  }
 }
 
-/** World position -> tile index. */
-export function tileIndexAt(x, y) {
-  const tx = Math.max(0, Math.min(MAP_TILES - 1, (x / TILE) | 0));
-  const ty = Math.max(0, Math.min(MAP_TILES - 1, (y / TILE) | 0));
-  return ty * MAP_TILES + tx;
-}
 
-/** Tile index -> world centre. */
-export function tileCenter(i) {
-  return [((i % MAP_TILES) + 0.5) * TILE, (((i / MAP_TILES) | 0) + 0.5) * TILE];
-}

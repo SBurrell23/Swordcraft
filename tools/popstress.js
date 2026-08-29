@@ -7,14 +7,14 @@
 
 import { generateMap } from '../src/game/mapgen.js';
 import { Sim } from '../src/game/sim.js';
-import { TICK_DT, MAX_POP_CAP, UNITS, CMD, TILE, MAP_TILES } from '../src/game/consts.js';
+import { TICK_DT, MAX_POP_CAP, UNITS, CMD, TILE } from '../src/game/consts.js';
 import { encodeSnapshot } from '../src/net/protocol.js';
 import { COLORS } from '../src/game/assets.js';
 
 const seconds = Number(process.argv[2] || 60);
 const seed = Number(process.argv[3] || 4242);
 
-const map = generateMap(seed);
+const map = generateMap(seed, 4);
 const players = [0, 1, 2, 3].map((slot) => ({
   id: slot + 1, slot, name: 'P' + (slot + 1),
   color: COLORS[slot], ai: true,
@@ -24,12 +24,12 @@ const sim = new Sim(map, players);
 // The armies are placed on top of each other in the middle of the map rather
 // than in their corners: crossing the island would eat the whole run, and it is
 // the fight itself - targeting, projectiles, collision - that costs anything.
-const mid = (MAP_TILES * TILE) / 2;
+const mid = (map.tiles * TILE) / 2;
 const arena = findOpenGround(mid, mid);
 
 /** Nearest tile centre to (x, y) that a unit can stand on. */
 function findOpenGround(x, y) {
-  for (let r = 0; r < MAP_TILES; r++) {
+  for (let r = 0; r < map.tiles; r++) {
     for (let dx = -r; dx <= r; dx++) {
       for (let dy = -r; dy <= r; dy++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;

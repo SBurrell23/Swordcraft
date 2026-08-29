@@ -7,7 +7,7 @@
 // URLs that `border-image` can use directly.
 
 import { A, ICON, COLOR_HEX, cropDataURL } from '../game/assets.js';
-import { BUILDINGS, UNITS, BUILD_MENU, RESOURCES, TILE, MAP_TILES, MAX_POP_CAP } from '../game/consts.js';
+import { BUILDINGS, UNITS, BUILD_MENU, SELECT_GROUPS, RESOURCES, TILE, MAX_POP_CAP } from '../game/consts.js';
 import { audio } from '../game/audio.js';
 import { avatarURL, scrollBarURL } from './skin.js';
 
@@ -73,15 +73,10 @@ export class Hud {
             <div id="selGroup" class="sel-group" hidden></div>
           </div>
           <div class="sel-quick">
-            <button class="pixel-btn tiny" data-select="peasants" title="Select every peasant you own">
-              Peasants <b data-count="peasants">0</b>
-            </button>
-            <button class="pixel-btn tiny" data-select="army" title="Select your whole army (Tab)">
-              Army <b data-count="army">0</b>
-            </button>
-            <button class="pixel-btn tiny" data-select="all" title="Select every unit you own">
-              All <b data-count="all">0</b>
-            </button>
+            ${SELECT_GROUPS.map((g) => `
+              <button class="pixel-btn tiny" data-select="${g.key}" title="${g.title}">
+                <span class="q-label">${g.label}</span><b data-count="${g.key}">0</b>
+              </button>`).join('')}
           </div>
         </div>
 
@@ -116,8 +111,8 @@ export class Hud {
       razeBtn: this.root.querySelector('#razeBtn'),
       topbar: this.root.querySelector('#topbar'),
       popMax: this.root.querySelector('.pop-max'),
-      counts: Object.fromEntries(['peasants', 'army', 'all'].map((k) =>
-        [k, this.root.querySelector(`[data-count="${k}"]`)])),
+      counts: Object.fromEntries(SELECT_GROUPS.map((g) =>
+        [g.key, this.root.querySelector(`[data-count="${g.key}"]`)])),
     };
     this.prodTarget = 0;
 
@@ -199,8 +194,9 @@ export class Hud {
       const fx = (e.clientX - r.left) / r.width;
       const fy = (e.clientY - r.top) / r.height;
       const cam = this.game.renderer.camera;
-      cam.x = Math.max(0, Math.min(1, fx)) * MAP_TILES * TILE;
-      cam.y = Math.max(0, Math.min(1, fy)) * MAP_TILES * TILE;
+      const span = this.game.map.tiles * TILE;
+      cam.x = Math.max(0, Math.min(1, fx)) * span;
+      cam.y = Math.max(0, Math.min(1, fy)) * span;
       cam.clamp();
     };
     mm.addEventListener('mousedown', (e) => { dragging = true; jump(e); e.preventDefault(); });
@@ -262,18 +258,18 @@ export class Hud {
    * before you click is half of why the button is useful.
    */
   updateQuickCounts(view) {
-    let peasants = 0, army = 0;
+    const byRole = { worker: 0, melee: 0, ranged: 0, caster: 0 };
     for (const u of view.units) {
       if (u.owner !== this.game.localPlayerId) continue;
-      if (u.type === 'peasant') peasants++; else army++;
+      const def = UNITS[u.type];
+      if (def && byRole[def.role] !== undefined) byRole[def.role]++;
     }
-    const set = (key, n) => {
-      const el = this.el.counts[key];
-      if (el && el.textContent !== String(n)) el.textContent = n;
-    };
-    set('peasants', peasants);
-    set('army', army);
-    set('all', peasants + army);
+    for (const g of SELECT_GROUPS) {
+      const el = this.el.counts[g.key];
+      if (!el) continue;
+      const n = g.roles.reduce((sum, r) => sum + byRole[r], 0);
+      if (el.textContent !== String(n)) el.textContent = n;
+    }
   }
 
   updateChips(view) {
@@ -299,7 +295,7 @@ export class Hud {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(r.minimap, 0, 0, size, size);
 
-    const k = size / (MAP_TILES * TILE);
+    const k = size / (this.game.map.tiles * TILE);
     for (const b of view.buildings) {
       const def = BUILDINGS[b.kind];
       ctx.fillStyle = COLOR_HEX[b.colorName] || '#fff';

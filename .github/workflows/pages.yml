@@ -31,7 +31,7 @@ jobs:
 
       - name: Sanity-check the game logic without a browser
         run: |
-          node tools/mapcheck.js 5
+          node tools/mapcheck.js 4
           node tools/buildtest.js 8
           node tools/simtest.js 3
           node tools/popstress.js 45

@@ -19,6 +19,8 @@ class Audio {
     // the effects, so a single master volume is the wrong control to offer.
     this.sfxVolume = readStored('swordcraft.vol.sfx', 0.75);
     this.musicVolume = readStored('swordcraft.vol.music', 0.45);
+    /** Chosen battle theme, or 'shuffle' to draw one per match. */
+    this.gameTheme = readStoredString('swordcraft.theme', 'shuffle');
     this.voices = 0;
     /** Camera rect, set each frame, used to place world sounds. */
     this.listener = { x: 0, y: 0, halfW: 800, halfH: 450 };
@@ -383,9 +385,50 @@ Audio.prototype.effects = {
  * with, so `play` is safe to call early and simply takes effect once the
  * context is running.
  */
+/**
+ * Battle music. One is picked in the sound panel and remembered; "Shuffle"
+ * draws a different one at the start of each match, which is the setting worth
+ * defaulting to when there are five of them.
+ */
+export const GAME_THEMES = [
+  { key: 'breeze', name: 'Windy Breeze', src: 'audio/game-theme.mp3' },
+  { key: 'banners', name: 'Banners High', src: 'audio/game-themes/game theme 1.mp3' },
+  { key: 'siege', name: 'The Long Siege', src: 'audio/game-themes/game theme 2.mp3' },
+  { key: 'salt', name: 'Salt and Timber', src: 'audio/game-themes/game theme 3.mp3' },
+  { key: 'bridge', name: 'Last Bridge Standing', src: 'audio/game-themes/game theme 4.mp3' },
+];
+
 const TRACKS = {
   lobby: 'audio/lobby-theme.mp3',
-  game: 'audio/game-theme.mp3',
+  game: GAME_THEMES[0].src,
+};
+
+/** The theme that should be playing, resolving "shuffle" to an actual track. */
+Audio.prototype.pickGameTheme = function pickGameTheme() {
+  if (this.gameTheme === 'shuffle') {
+    return GAME_THEMES[Math.floor(Math.random() * GAME_THEMES.length)];
+  }
+  return GAME_THEMES.find((t) => t.key === this.gameTheme) || GAME_THEMES[0];
+};
+
+/**
+ * Chooses the battle theme. The <audio> element is reused rather than replaced,
+ * because it is already wired into the music bus and re-routing it would need a
+ * second createMediaElementSource on the same element - which throws.
+ */
+Audio.prototype.setGameTheme = function setGameTheme(key) {
+  this.gameTheme = key;
+  try { localStorage.setItem('swordcraft.theme', key); } catch { /* private mode */ }
+  if (!this.tracks) return;
+  const chosen = this.pickGameTheme();
+  const track = this.tracks.game;
+  if (track.src === chosen.src) return;
+  track.src = chosen.src;
+  track.el.src = chosen.src;
+  if (this.current === 'game') {
+    const started = track.el.play();
+    if (started && started.catch) started.catch(() => { this.pendingMusic = 'game'; });
+  }
 };
 
 Audio.prototype.initTracks = function initTracks() {
@@ -393,7 +436,7 @@ Audio.prototype.initTracks = function initTracks() {
   this.tracks = {};
   for (const [name, src] of Object.entries(TRACKS)) {
     const el = new window.Audio();
-    el.src = src;
+    el.src = name === 'game' ? this.pickGameTheme().src : src;
     el.loop = true;
     el.preload = 'auto';
     el.volume = this.musicVolume;
@@ -429,6 +472,12 @@ Audio.prototype.playMusic = function playMusic(name) {
   }
   const track = this.tracks[name];
   if (!track) return;
+  // Shuffle picks again every time the battle music starts, so a rematch is
+  // not the same track over and over.
+  if (name === 'game' && this.gameTheme === 'shuffle') {
+    const chosen = this.pickGameTheme();
+    if (track.src !== chosen.src) { track.src = chosen.src; track.el.src = chosen.src; }
+  }
   const started = track.el.play();
   // Autoplay before a gesture rejects; the next init() picks it up again.
   if (started && started.catch) started.catch(() => { this.pendingMusic = name; });
@@ -451,6 +500,15 @@ Audio.prototype.resumeMusic = function resumeMusic() {
 };
 
 const clamp01 = (v) => Math.max(0, Math.min(1, Number(v) || 0));
+
+function readStoredString(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch {
+    return fallback;   // private mode, or storage disabled
+  }
+}
 
 function readStored(key, fallback) {
   try {

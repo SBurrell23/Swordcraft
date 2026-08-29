@@ -15,7 +15,7 @@ import {
   TOWER_ATTACK, LANCER_GUARD_ARMOR, RALLY_SPREAD, NODE_SLOTS, LEVEL,
   MAX_PEASANTS_PER_BASE, DEMOLISH_REFUND,
 } from './consts.js';
-import { NavGrid, tileIndexAt, tileCenter } from './pathfind.js';
+import { NavGrid } from './pathfind.js';
 
 /**
  * How close a peasant must get to a footprint to work it. A shade over one tile,
@@ -27,6 +27,8 @@ const DELIVER_RANGE = TILE * 1.1;
 
 /** Cell size for the unit lookup grid. Comfortably above the largest range. */
 const HASH = 128;
+// Row stride for the hash key. Sized for the largest map there is: a smaller
+// one simply leaves gaps in the key space, and the keys stay unique either way.
 const HASH_W = Math.ceil((MAP_TILES * TILE) / HASH);
 
 let nextId = 1;
@@ -36,7 +38,7 @@ export const EV = {
   MELEE_HIT: 1, ARROW_FIRE: 2, ARROW_HIT: 3, UNIT_DIED: 4, BUILDING_HIT: 5,
   BUILDING_DIED: 6, BUILD_PLACED: 7, BUILD_DONE: 8, UNIT_SPAWNED: 9,
   GATHER_TICK: 10, DEPOSIT: 11, HEAL: 12, PLAYER_DEFEATED: 13, GAME_OVER: 14,
-  NODE_DEPLETED: 15, HAMMER: 16,
+  NODE_DEPLETED: 15, HAMMER: 16, CLEAVE: 17,
 };
 
 export class Sim {
@@ -89,7 +91,7 @@ export class Sim {
     const start = this.map.starts[player.slot];
     const castle = this.addBuilding(player.id, 'castle', start.tx - 2, start.ty - 1, true);
     // Face the rally point toward the middle of the map.
-    const mid = (MAP_TILES * TILE) / 2;
+    const mid = (this.map.tiles * TILE) / 2;
     const dx = Math.sign(mid - castle.x) || 1;
     const dy = Math.sign(mid - castle.y) || 1;
     castle.rallyX = castle.x + dx * 150;
@@ -137,8 +139,8 @@ export class Sim {
   /** Places a building. `finished` skips the construction phase (starting castle). */
   addBuilding(ownerId, kind, tx, ty, finished = false) {
     const def = BUILDINGS[kind];
-    tx = Math.max(0, Math.min(MAP_TILES - def.foot[0], tx));
-    ty = Math.max(0, Math.min(MAP_TILES - def.foot[1], ty));
+    tx = Math.max(0, Math.min(this.map.tiles - def.foot[0], tx));
+    ty = Math.max(0, Math.min(this.map.tiles - def.foot[1], ty));
     const b = {
       id: nextId++, owner: ownerId, kind, def,
       tx, ty,
@@ -284,8 +286,8 @@ export class Sim {
       case CMD.RALLY: {
         const b = this.buildings.get(cmd.id);
         if (!b || b.owner !== playerId) break;
-        b.rallyX = clampWorld(cmd.x);
-        b.rallyY = clampWorld(cmd.y);
+        b.rallyX = this.clampWorld(cmd.x);
+        b.rallyY = this.clampWorld(cmd.y);
         break;
       }
       case CMD.TOGGLE_PRODUCTION: {
@@ -328,7 +330,7 @@ export class Sim {
    */
   issueFormationMove(units, x, y, state) {
     if (!units.length) return;
-    x = clampWorld(x); y = clampWorld(y);
+    x = this.clampWorld(x); y = this.clampWorld(y);
     const spacing = 42;
     const cols = Math.max(1, Math.ceil(Math.sqrt(units.length)));
     // Order by distance so the group keeps its shape instead of crossing over.
@@ -354,6 +356,9 @@ export class Sim {
     if (def.requiresPop && player.pop < def.requiresPop) { refuse(); return; }
     if (!this.canAfford(player, def.cost)) { refuse(); return; }
     if (!this.footprintFree(tx, ty, def.foot)) { refuse(); return; }
+    // Dropping a foundation on top of somebody else's army was being used to
+    // shove it apart. A building needs ground nobody hostile is standing on.
+    if (this.footprintHasEnemies(player.id, tx, ty, def.foot)) { refuse(); return; }
     // A site nobody can stand beside can never be built, so it is not a legal
     // place to put one - better to refuse the click than bank the cost in a
     // foundation that will sit there forever.
@@ -369,12 +374,32 @@ export class Sim {
     for (const u of crew.slice(0, 5)) this.assignBuild(u, b);
   }
 
+  /**
+   * True when a hostile unit is standing where a footprint would go. Checked
+   * with the unit's radius included, so a soldier half in the square still
+   * counts - the point is that you cannot build a body out of the way.
+   */
+  footprintHasEnemies(ownerId, tx, ty, foot) {
+    const x0 = tx * TILE, y0 = ty * TILE;
+    const x1 = x0 + foot[0] * TILE, y1 = y0 + foot[1] * TILE;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const reach = Math.hypot(x1 - x0, y1 - y0) / 2 + 24;
+    for (const other of this.near(cx, cy, reach)) {
+      if (other.owner === ownerId || other.hp <= 0 || other.def.foot) continue;
+      const r = other.def.radius || 14;
+      if (other.x + r > x0 && other.x - r < x1 && other.y + r > y0 && other.y - r < y1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** True when a footprint sits on open, unoccupied, dry ground. */
   footprintFree(tx, ty, foot) {
-    if (tx < 0 || ty < 0 || tx + foot[0] > MAP_TILES || ty + foot[1] > MAP_TILES) return false;
+    if (tx < 0 || ty < 0 || tx + foot[0] > this.map.tiles || ty + foot[1] > this.map.tiles) return false;
     for (let y = 0; y < foot[1]; y++) {
       for (let x = 0; x < foot[0]; x++) {
-        const i = (ty + y) * MAP_TILES + (tx + x);
+        const i = (ty + y) * this.map.tiles + (tx + x);
         if (this.map.level[i] === LEVEL.WATER) return false;
         if (this.nav.occupied[i]) return false;
       }
@@ -453,22 +478,22 @@ export class Sim {
   approach(u, tx, ty, foot) {
     const tile = this.nav.nearestApproach(tx, ty, foot, u.x, u.y);
     if (tile < 0) return false;
-    const [gx, gy] = tileCenter(tile);
+    const [gx, gy] = this.nav.tileCenter(tile);
     this.moveTo(u, gx, gy, 0);
     return true;
   }
 
   /** Sets a movement goal and asks the pathfinder for a route. */
   moveTo(u, x, y, priority = 0) {
-    u.goalX = clampWorld(x);
-    u.goalY = clampWorld(y);
+    u.goalX = this.clampWorld(x);
+    u.goalY = this.clampWorld(y);
     u.path = null;
     u.pi = 0;
     u.stuckT = 0;
     u.awaitingPath = true;
-    const goalTile = this.nav.nearestOpen(tileIndexAt(u.goalX, u.goalY), 8);
+    const goalTile = this.nav.nearestOpen(this.nav.tileIndexAt(u.goalX, u.goalY), 8);
     if (goalTile < 0) { u.awaitingPath = false; return; }
-    const [gx, gy] = tileCenter(goalTile);
+    const [gx, gy] = this.nav.tileCenter(goalTile);
     u.goalX = gx; u.goalY = gy;
     this.nav.request(u.x, u.y, goalTile, (path) => {
       u.awaitingPath = false;
@@ -526,11 +551,11 @@ export class Sim {
     // A building can go up on top of a worker, sealing it inside solid tiles
     // with no legal step out. Nothing should ever be entombed, so lift anyone
     // who is and set them down alongside.
-    const here = tileIndexAt(u.x, u.y);
+    const here = this.nav.tileIndexAt(u.x, u.y);
     if (!this.nav.passable(here)) {
       const out = this.nav.nearestOpen(here, 6);
       if (out >= 0) {
-        const [ox, oy] = tileCenter(out);
+        const [ox, oy] = this.nav.tileCenter(out);
         u.x = ox; u.y = oy;
         u.path = null;
         u.stuckT = 0;
@@ -950,11 +975,11 @@ export class Sim {
     for (let attempt = 0; attempt < 10; attempt++) {
       const a = Math.random() * Math.PI * 2;
       const r = 20 + Math.random() * 46;
-      const x = clampWorld(cx + Math.cos(a) * r);
-      const y = clampWorld(cy + Math.sin(a) * r * 0.7);
-      if (this.nav.passable(tileIndexAt(x, y))) return [x, y];
+      const x = this.clampWorld(cx + Math.cos(a) * r);
+      const y = this.clampWorld(cy + Math.sin(a) * r * 0.7);
+      if (this.nav.passable(this.nav.tileIndexAt(x, y))) return [x, y];
     }
-    return [clampWorld(cx), clampWorld(cy)];
+    return [this.clampWorld(cx), this.clampWorld(cy)];
   }
 
   // -- combat ----------------------------------------------------------------
@@ -1041,12 +1066,33 @@ export class Sim {
       return;
     }
     this.damage(target, u.def.damage, u);
+    if (u.def.splash) this.cleave(u, target);
     const dx = target.x - u.x, dy = target.y - u.y;
     const isBuilding = !!target.def.foot;
     this.emit(isBuilding ? EV.BUILDING_HIT : EV.MELEE_HIT, {
       id: target.id, x: target.x - dx * 0.25, y: target.y - dy * 0.25, dx, dy,
       w: u.type === 'lancer' ? 1 : 0,
     });
+  }
+
+  /**
+   * Spreads a share of a swing to every other hostile unit around the one that
+   * was struck. Buildings are left out - a sword sweep catching three separate
+   * structures reads as a bug, not a feature - and so are friendlies, because
+   * an army that mauls itself in a crowd is not fun to command.
+   */
+  cleave(u, target) {
+    const { radius, share } = u.def.splash;
+    const extra = Math.max(1, Math.round(u.def.damage * share));
+    let hit = 0;
+    for (const other of this.near(target.x, target.y, radius)) {
+      if (other === target || other.hp <= 0) continue;
+      if (other.owner === u.owner || other.def.foot) continue;
+      if (Math.hypot(other.x - target.x, other.y - target.y) > radius) continue;
+      this.damage(other, extra, u);
+      hit++;
+    }
+    if (hit) this.emit(EV.CLEAVE, { x: target.x, y: target.y, r: radius, n: hit });
   }
 
   fireArrow(from, target, damage) {
@@ -1146,7 +1192,7 @@ export class Sim {
       return false;
     }
 
-    let [wx, wy] = tileCenter(u.path[u.pi]);
+    let [wx, wy] = this.nav.tileCenter(u.path[u.pi]);
     const last = u.pi === u.path.length - 1;
     if (last) { wx = u.goalX; wy = u.goalY; }
 
@@ -1189,13 +1235,18 @@ export class Sim {
     this.face(u, x, y);
   }
 
+  /** Keeps a world point inside the island's bounds. */
+  clampWorld(v) {
+    return Math.max(TILE * 0.6, Math.min(this.map.tiles * TILE - TILE * 0.6, v));
+  }
+
   /** A world point is walkable when its tile is dry, in bounds, and clear. */
   walkableAt(x, y, u) {
     if (x < TILE * 0.4 || y < TILE * 0.4) return false;
-    if (x > MAP_TILES * TILE - TILE * 0.4 || y > MAP_TILES * TILE - TILE * 0.4) return false;
-    const to = tileIndexAt(x, y);
+    if (x > this.map.tiles * TILE - TILE * 0.4 || y > this.map.tiles * TILE - TILE * 0.4) return false;
+    const to = this.nav.tileIndexAt(x, y);
     if (!this.nav.passable(to)) return false;
-    const from = tileIndexAt(u.x, u.y);
+    const from = this.nav.tileIndexAt(u.x, u.y);
     if (from === to) return true;
     return this.nav.stepOk(from, to);
   }
@@ -1328,17 +1379,13 @@ function animFps(u) {
   }
 }
 
-function clampWorld(v) {
-  return Math.max(TILE * 0.6, Math.min(MAP_TILES * TILE - TILE * 0.6, v));
-}
-
 /**
  * Clears a tile's static blocker (a depleted resource node) as well as its
  * dynamic occupancy, so the ground genuinely opens up again.
  */
 NavGrid.prototype.setOccupiedRaw = function setOccupiedRaw(tx, ty, on) {
-  if (tx < 0 || ty < 0 || tx >= MAP_TILES || ty >= MAP_TILES) return;
-  const i = ty * MAP_TILES + tx;
+  if (tx < 0 || ty < 0 || tx >= this.tiles || ty >= this.tiles) return;
+  const i = ty * this.tiles + tx;
   this.map.blocked[i] = on ? 1 : 0;
   this.occupied[i] = on ? 1 : 0;
   this.version++;

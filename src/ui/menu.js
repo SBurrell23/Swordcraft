@@ -65,8 +65,14 @@ export class Menu {
 
   // -- skirmish --------------------------------------------------------------
 
-  showSkirmish() {
+  /**
+   * @param {{ai?: number, level?: string, color?: number}} [prefill] carried
+   *   over from the match that just ended, so another one is two clicks away
+   */
+  showSkirmish(prefill = {}) {
     const seed = randomSeed();
+    const ai = prefill.ai ?? 3;
+    const level = prefill.level ?? 'normal';
     this.show(`
       <div class="screen">
         <h2 class="screen-title">Skirmish</h2>
@@ -76,16 +82,16 @@ export class Menu {
               <div class="field-row">
                 <label class="field"><span>Opponents</span>
                   <select id="aiCount">
-                    <option value="1">1 AI</option>
-                    <option value="2">2 AI</option>
-                    <option value="3" selected>3 AI</option>
+                    <option value="1"${ai === 1 ? ' selected' : ''}>1 AI</option>
+                    <option value="2"${ai === 2 ? ' selected' : ''}>2 AI</option>
+                    <option value="3"${ai === 3 ? ' selected' : ''}>3 AI</option>
                   </select>
                 </label>
                 <label class="field"><span>Difficulty</span>
                   <select id="aiLevel">
-                    <option value="easy">Easy</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="hard">Hard</option>
+                    <option value="easy"${level === 'easy' ? ' selected' : ''}>Easy</option>
+                    <option value="normal"${level === 'normal' ? ' selected' : ''}>Normal</option>
+                    <option value="hard"${level === 'hard' ? ' selected' : ''}>Hard</option>
                   </select>
                 </label>
               </div>
@@ -119,14 +125,21 @@ export class Menu {
         </div>
       </div>`);
 
-    this.selectedColor = 0;
+    this.selectedColor = prefill.color ?? 0;
     this.renderColorRow();
+    const aiSelect = this.root.querySelector('#aiCount');
+    this.previewPlayers = Number(aiSelect.value) + 1;
     this.bindPreview(seed);
+    // The island is shaped around the seats, so changing the opponent count
+    // changes the map - the preview has to follow or it is telling a lie.
+    aiSelect.addEventListener('change', () => {
+      this.paintPreview(this.previewSeed, Number(aiSelect.value) + 1);
+    });
     this.root.querySelector('#btnBack').addEventListener('click', () => this.showTitle());
     this.root.querySelector('#btnPlay').addEventListener('click', () => {
-      const count = Number(this.root.querySelector('#aiCount').value);
-      const level = this.root.querySelector('#aiLevel').value;
-      this.app.startSkirmish(count, level, this.previewSeed, this.selectedColor);
+      const count = Number(aiSelect.value);
+      const lvl = this.root.querySelector('#aiLevel').value;
+      this.app.startSkirmish(count, lvl, this.previewSeed, this.selectedColor);
     });
   }
 
@@ -150,11 +163,13 @@ export class Menu {
   mapPreviewHtml(seed) {
     return `
       <div class="map-preview">
-        <canvas id="mapCanvas" width="68" height="68"></canvas>
+        <canvas id="mapCanvas"></canvas>
         <div class="seed-row">
           <label class="field seed"><span>Seed</span>
             <input id="seedInput" value="${seed}" maxlength="10" autocomplete="off">
           </label>
+          <button class="pixel-btn small" id="btnSeedBack" disabled
+                  title="Go back to the last map you looked at">&lsaquo;</button>
           <button class="pixel-btn small" id="btnReroll">Reroll</button>
         </div>
         <div class="map-stats" id="mapStats"></div>
@@ -164,23 +179,51 @@ export class Menu {
   bindPreview(seed) {
     const input = this.root.querySelector('#seedInput');
     const reroll = this.root.querySelector('#btnReroll');
+    const back = this.root.querySelector('#btnSeedBack');
     if (!input) return;
-    const refresh = () => {
-      const v = Math.abs(parseInt(input.value, 10) || 1) >>> 0;
+    // Rerolling is cheap and habit-forming, which makes it easy to blow past a
+    // map you liked. The history is what lets you get it back.
+    this.seedHistory = [];
+    const syncBack = () => { if (back) back.disabled = !this.seedHistory.length; };
+    const apply = (v) => {
       this.previewSeed = v;
+      input.value = v;
       this.paintPreview(v);
       this.app.onSeedChanged?.(v);
+      syncBack();
     };
-    input.addEventListener('change', refresh);
-    reroll?.addEventListener('click', () => { input.value = randomSeed(); refresh(); });
+    const refresh = (remember) => {
+      const v = Math.abs(parseInt(input.value, 10) || 1) >>> 0;
+      if (remember && v !== this.previewSeed) this.seedHistory.push(this.previewSeed);
+      apply(v);
+    };
+    input.addEventListener('change', () => refresh(true));
+    reroll?.addEventListener('click', () => {
+      audio.play('click');
+      this.seedHistory.push(this.previewSeed);
+      input.value = randomSeed();
+      refresh(false);
+    });
+    back?.addEventListener('click', () => {
+      if (!this.seedHistory.length) return;
+      audio.play('click');
+      apply(this.seedHistory.pop());
+    });
     this.previewSeed = seed;
     this.paintPreview(seed);
+    syncBack();
   }
 
-  paintPreview(seed) {
+  /**
+   * Repaints the map preview. The island's size and shape depend on how many
+   * seats are filled, so the count has to come along - otherwise the picture
+   * is of a map nobody is going to play.
+   */
+  paintPreview(seed, players = this.previewPlayers || 4) {
+    this.previewPlayers = players;
     const canvas = this.root.querySelector('#mapCanvas');
     if (!canvas) return;
-    const map = generateMap(seed);
+    const map = generateMap(seed, players);
     paintMinimap(map, canvas);
     const stats = this.root.querySelector('#mapStats');
     if (stats) {
@@ -188,7 +231,8 @@ export class Menu {
       for (const v of map.level) if (v === 0) water++;
       const land = map.level.length - water;
       stats.textContent =
-        `${map.nodes.length} resource sites · ${Math.round((land / map.level.length) * 100)}% land`;
+        `${map.tiles}x${map.tiles} · ${map.nodes.length} resource sites · ` +
+        `${Math.round((land / map.level.length) * 100)}% land`;
     }
   }
 
@@ -228,6 +272,7 @@ export class Menu {
         </div>
       </div>`);
 
+    this.previewPlayers = Math.max(2, state.players.length);
     this.bindPreview(seed);
     this.root.querySelector('#btnCopy').addEventListener('click', async () => {
       try {
@@ -250,24 +295,31 @@ export class Menu {
   renderSlots(state, canEdit = true) {
     const list = this.root.querySelector('#slotList');
     if (!list) return;
+    // Which player this screen belongs to: the host is always id 1, a guest is
+    // told which id it was given. Used to offer "Sit here" on open seats.
+    const meId = canEdit ? 1 : state.you;
+    const mine = state.players.find((p) => p.id === meId);
     const rows = [];
     for (let slot = 0; slot < MAX_PLAYERS; slot++) {
       const p = state.players.find((x) => x.slot === slot);
       const color = COLORS[slot];
       if (p) {
         rows.push(`
-          <div class="slot filled" style="--c:${COLOR_HEX[color]}">
+          <div class="slot filled${p.id === meId ? ' me' : ''}" style="--c:${COLOR_HEX[color]}">
             <img class="face" alt="" src="${avatarURL(slot)}">
             <span class="slot-name">${escapeHtml(p.name)}</span>
-            <span class="slot-tag">${p.host ? 'host' : p.ai ? 'computer' : 'connected'}</span>
+            <span class="slot-tag">${p.id === meId ? 'you' : p.host ? 'host' : p.ai ? 'computer' : 'connected'}</span>
             ${p.host || !canEdit ? '' : `<button class="pixel-btn tiny" data-remove="${slot}">Remove</button>`}
           </div>`);
       } else {
         rows.push(`
           <div class="slot empty" style="--c:${COLOR_HEX[color]}">
             <span class="swatch"></span>
-            <span class="slot-name">Open slot</span>
-            ${canEdit ? `<button class="pixel-btn tiny" data-addai="${slot}">Add AI</button>` : ''}
+            <span class="slot-name">Open slot &mdash; ${color}</span>
+            <div class="slot-actions">
+              ${mine ? `<button class="pixel-btn tiny" data-sit="${slot}">Sit here</button>` : ''}
+              ${canEdit ? `<button class="pixel-btn tiny" data-addai="${slot}">Add AI</button>` : ''}
+            </div>
           </div>`);
       }
     }
@@ -277,6 +329,9 @@ export class Menu {
     }
     for (const b of list.querySelectorAll('[data-remove]')) {
       b.addEventListener('click', () => { audio.play('click'); this.app.removeSlot(Number(b.dataset.remove)); });
+    }
+    for (const b of list.querySelectorAll('[data-sit]')) {
+      b.addEventListener('click', () => { audio.play('click'); this.app.takeSeat(Number(b.dataset.sit)); });
     }
   }
 
@@ -331,7 +386,7 @@ export class Menu {
             <div class="lobby-left"><div class="slot-list" id="slotList"></div></div>
             <div class="lobby-right">
               <div class="map-preview">
-                <canvas id="mapCanvas" width="68" height="68"></canvas>
+                <canvas id="mapCanvas"></canvas>
                 <div class="map-stats" id="mapStats"></div>
               </div>
             </div>
@@ -343,16 +398,17 @@ export class Menu {
         </div>
       </div>`);
     this.renderSlots(state, false);
-    this.paintPreview(state.seed);
+    this.paintPreview(state.seed, Math.max(2, state.players.length));
     this.root.querySelector('#btnLeave').addEventListener('click', () => this.app.leaveLobby());
   }
 
   updateGuestLobby(state) {
     if (!this.root.querySelector('#slotList')) { this.showGuestLobby(state); return; }
     this.renderSlots(state, false);
-    if (this.previewSeed !== state.seed) {
+    const seats = Math.max(2, state.players.length);
+    if (this.previewSeed !== state.seed || this.previewPlayers !== seats) {
       this.previewSeed = state.seed;
-      this.paintPreview(state.seed);
+      this.paintPreview(state.seed, seats);
     }
   }
 
@@ -408,7 +464,8 @@ export class Menu {
                 <div><b>A</b> attack-move · <b>S</b> stop · <b>G</b> hold</div>
                 <div><b>Tab</b> select whole army · <b>P</b> halt training</div>
                 <div><b>H O B R T M</b> place buildings</div>
-                <div><b>Ctrl+1-9</b> / <b>1-9</b> control groups</div>
+                <div>Console buttons select <b>Peasants</b>, <b>Army</b>,
+                    <b>Melee</b>, <b>Ranged</b>, <b>Casters</b> or <b>All</b></div>
                 <div><b>Arrows</b>, screen edge, or middle-drag to pan · <b>wheel</b> to zoom</div>
               </div>
             </section>

@@ -15,7 +15,7 @@ const ST_NAME = Object.fromEntries(Object.entries(ST).map(([k, v]) => [v, k]));
 const minutes = Number(process.argv[2] || 5);
 const seed = Number(process.argv[3] || 12345);
 
-const map = generateMap(seed);
+const map = generateMap(seed, 4);
 const players = [0, 1, 2, 3].map((slot) => ({
   id: slot + 1, slot, name: 'AI ' + (slot + 1),
   color: COLORS[slot], ai: true,

@@ -8,7 +8,7 @@
 
 import { A, COLORS } from './assets.js';
 import {
-  TICK_DT, SNAPSHOT_EVERY, MAP_TILES, TILE, LEVEL, BUILDINGS, RESOURCES, CMD,
+  TICK_DT, SNAPSHOT_EVERY, TILE, LEVEL, BUILDINGS, UNITS, SELECT_GROUPS, RESOURCES, CMD,
 } from './consts.js';
 import { Sim, EV } from './sim.js';
 import { AI } from './ai.js';
@@ -302,6 +302,18 @@ export class Game {
         this.fx.impact(ev.x, ev.y, ev.dx, ev.dy, ev.w ? '#cfe9ff' : '#ffe9b0');
         audio.play(ev.w ? 'spearHit' : 'swordHit', ev.x, ev.y);
         break;
+      case EV.CLEAVE: {
+        // One sweep, not one burst per victim: a Warrior in a crowd would
+        // otherwise bury the screen under its own hit effects.
+        this.fx.ring(ev.x, ev.y, ev.r, 0.3, 'rgba(255,226,164,0.65)', 3);
+        for (let i = 0; i < Math.min(8, 3 + ev.n * 2); i++) {
+          const a = (i / 8) * Math.PI * 2 + Math.random();
+          this.fx.spark(ev.x, ev.y, Math.cos(a) * 120, Math.sin(a) * 90,
+            { color: '#ffe9b0', size: 3, life: 0.3, fade: true });
+        }
+        audio.play('swordHit', ev.x, ev.y);
+        break;
+      }
       case EV.ARROW_FIRE:
         audio.play('bowShot', ev.x, ev.y);
         break;
@@ -449,15 +461,31 @@ export class Game {
   }
 
   /**
+   * True when a hostile unit stands where a footprint would go. Mirrors the
+   * host's rule so the placement ghost turns red under the cursor rather than
+   * the click being silently refused.
+   */
+  enemiesOnFootprint(tx, ty, foot) {
+    const x0 = tx * TILE, y0 = ty * TILE;
+    const x1 = x0 + foot[0] * TILE, y1 = y0 + foot[1] * TILE;
+    for (const u of this.view.units) {
+      if (u.owner === this.localPlayerId) continue;
+      const r = UNITS[u.type] ? UNITS[u.type].radius : 14;
+      if (u.x + r > x0 && u.x - r < x1 && u.y + r > y0 && u.y - r < y1) return true;
+    }
+    return false;
+  }
+
+  /**
    * Client-side check for the placement ghost. The host re-validates before
    * anything is actually built, so this only has to be close enough to give
    * honest feedback under the cursor.
    */
   footprintLooksFree(tx, ty, foot) {
-    if (tx < 1 || ty < 1 || tx + foot[0] >= MAP_TILES || ty + foot[1] >= MAP_TILES) return false;
+    if (tx < 1 || ty < 1 || tx + foot[0] >= this.map.tiles || ty + foot[1] >= this.map.tiles) return false;
     for (let y = 0; y < foot[1]; y++) {
       for (let x = 0; x < foot[0]; x++) {
-        const i = (ty + y) * MAP_TILES + (tx + x);
+        const i = (ty + y) * this.map.tiles + (tx + x);
         if (this.map.level[i] === LEVEL.WATER) return false;
         if (this.map.blocked[i]) return false;
       }
@@ -467,21 +495,27 @@ export class Game {
       if (tx < b.tx + def.foot[0] && tx + foot[0] > b.tx
         && ty < b.ty + def.foot[1] && ty + foot[1] > b.ty) return false;
     }
+    if (this.enemiesOnFootprint(tx, ty, foot)) return false;
     return true;
   }
 
   /**
    * Backs the quick-select buttons in the console.
-   * @param {'peasants'|'army'|'all'} kind
+   *
+   * Deliberately does not move the camera. These buttons exist to grab a group
+   * without hunting for it, and you often want to grab one while watching
+   * somewhere else entirely - snatching the view away would undo the point.
+   * @param {string} kind a key from SELECT_GROUPS
    */
   selectAllOfKind(kind) {
-    const test = kind === 'peasants' ? (u) => u.type === 'peasant'
-      : kind === 'army' ? (u) => u.type !== 'peasant'
-        : () => true;
-    const n = this.input.selectAllOwned(test);
-    if (!n) this.hud.toast(kind === 'peasants' ? 'You have no peasants.'
-      : kind === 'army' ? 'You have no army yet.' : 'You have no units.');
-    else this.input.centerOnSelection();
+    const group = SELECT_GROUPS.find((g) => g.key === kind);
+    if (!group) return;
+    const roles = new Set(group.roles);
+    const n = this.input.selectAllOwned((u) => {
+      const def = UNITS[u.type];
+      return !!def && roles.has(def.role);
+    });
+    if (!n) this.hud.toast(`You have no ${group.label.toLowerCase()}.`);
   }
 
   onSelectionChanged() {
@@ -611,7 +645,7 @@ class ClientWorld {
       node.amount = n.amount;
       // The host frees the tile when a seam runs dry; mirror that locally so a
       // guest's build-placement preview agrees with what the host will accept.
-      if (n.amount <= 0) this.map.blocked[node.ty * MAP_TILES + node.tx] = 0;
+      if (n.amount <= 0) this.map.blocked[node.ty * this.map.tiles + node.tx] = 0;
     }
   }
 

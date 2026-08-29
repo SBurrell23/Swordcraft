@@ -451,6 +451,9 @@ canvas#world[hidden] { display: none; }
    the game show through on either side. */
 #selectionPanel {
   flex: 1;
+  /* Without this the six quick-select buttons set a min-content floor that
+     shoves the build menu off the side of a narrow window. */
+  min-width: 0;
   align-self: flex-end;
   margin: 0 13%;
   height: 156px;
@@ -462,9 +465,25 @@ canvas#world[hidden] { display: none; }
 /* The readout takes what height is left after the quick-select row, and clips
    rather than pushing the buttons off the bottom of the panel. */
 .sel-main { flex: 1; min-height: 0; overflow: hidden; }
-.sel-quick { display: flex; gap: 5px; flex: none; }
-.sel-quick .pixel-btn { flex: 1; min-height: 0; font-size: 11px; }
-.sel-quick b { color: var(--gold); margin-left: 3px; }
+/* Six buttons in the width that used to hold three: the frame art is 11px of
+   border each side, so the text has to give way rather than the button. */
+.sel-quick { display: flex; gap: 4px; flex: none; }
+.sel-quick .pixel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 2px;
+  font-size: 9.5px;
+  letter-spacing: 0;
+}
+/* The count is the part worth keeping when there is no room: the label gives
+   way to an ellipsis rather than the number being clipped off the end. */
+.q-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-quick b { color: var(--gold); flex: none; }
 .sel-empty { opacity: .6; font-size: 13px; padding: 8px 4px; }
 /* Portrait, then the copy, then the actions in their own column - so adding a
    button never pushes the text out of the panel. */
@@ -638,9 +657,9 @@ canvas#world[hidden] { display: none; }
 @media (max-width: 1100px) {
   .slate-panel { border-width: 13px 15px 13px 15px; }
   /* Narrow windows have no room to spare for the inset. */
-  #selectionPanel { margin: 0 3%; height: 148px; }
-  #buildPanel { width: 248px; }
-  #minimap { width: 190px; height: 190px; }
+  #selectionPanel { margin: 0 2%; height: 148px; }
+  #buildPanel { width: 214px; }
+  #minimap { width: 168px; height: 168px; }
   #topbar { gap: 12px; padding: 0 72px; }
   .res .amount { font-size: 14px; min-width: 32px; }
 }
@@ -694,6 +713,19 @@ canvas#world[hidden] { display: none; }
 }
 .slider-row input { width: 100%; accent-color: #7a4a2c; }
 .slider-row b { text-align: right; color: #7a4a2c; }
+/* The theme picker needs the full width the sliders' three columns give up. */
+.theme-row { grid-template-columns: 54px 1fr; }
+.theme-row select {
+  width: 100%;
+  font-family: var(--body-font);
+  font-size: 12px;
+  font-weight: 700;
+  color: #5c3d24;
+  background: rgba(255, 250, 232, .85);
+  border: 2px solid rgba(122, 74, 44, .5);
+  border-radius: 4px;
+  padding: 3px 4px;
+}
 #settingsClose { width: 100%; }
 
 .pause-note { font-size: 12px; color: #b6c4ce; margin: 14px 0 0; }

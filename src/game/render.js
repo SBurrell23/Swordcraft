@@ -11,14 +11,13 @@
 // along the fourth row and column.
 
 import { A, drawFrame, frameAt, COLOR_HEX, COLORS } from './assets.js';
-import { TILE, MAP_TILES, LEVEL, UNITS, BUILDINGS, ST, CAMERA } from './consts.js';
+import { TILE, LEVEL, UNITS, BUILDINGS, ST, CAMERA } from './consts.js';
 
 /** The largest share of the map, per axis, the camera may ever show. */
 export const MAX_VIEW_FRACTION = 0.5;
 
 const CHUNK = 16;                    // tiles per baked chunk
 const CHUNK_PX = CHUNK * TILE;
-const CHUNKS = Math.ceil(MAP_TILES / CHUNK);
 
 /** Column offset of the ground blob set inside Tilemap_colorN.png. */
 const GROUND_SET_X = 0;
@@ -39,10 +38,12 @@ const BUILDING_BASE = {
 };
 
 export class Camera {
-  constructor() {
+  /** @param {number} tiles grid size of the map this camera looks at */
+  constructor(tiles) {
     this.x = 0; this.y = 0;
     this.zoom = CAMERA.startZoom;
     this.vw = 1; this.vh = 1;
+    this.tiles = tiles;
   }
   /** Visible world rectangle. */
   view() {
@@ -55,8 +56,12 @@ export class Camera {
    * on each axis - which means the floor depends on the window size.
    */
   minZoom() {
-    const half = (MAP_TILES * TILE) * MAX_VIEW_FRACTION;
-    return Math.max(CAMERA.minZoom, this.vw / half, this.vh / half);
+    const half = (this.tiles * TILE) * MAX_VIEW_FRACTION;
+    // Capped at maxZoom: on a small map and a wide monitor the half-the-map
+    // rule can ask for a floor above the ceiling, and a floor that wins that
+    // argument would push the view past the closest zoom the game allows.
+    return Math.min(CAMERA.maxZoom,
+      Math.max(CAMERA.minZoom, this.vw / half, this.vh / half));
   }
 
   clampZoom() {
@@ -66,7 +71,7 @@ export class Camera {
   clamp() {
     this.clampZoom();
     const { hw, hh } = this.view();
-    const w = MAP_TILES * TILE;
+    const w = this.tiles * TILE;
     // When the map is smaller than the viewport on an axis, centre on it.
     this.x = hw * 2 >= w ? w / 2 : Math.max(hw, Math.min(w - hw, this.x));
     this.y = hh * 2 >= w ? w / 2 : Math.max(hh, Math.min(w - hh, this.y));
@@ -88,7 +93,10 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.map = map;
-    this.camera = new Camera();
+    /** Grid size of this map; it varies with the number of players. */
+    this.tiles = map.tiles;
+    this.chunkCount = Math.ceil(map.tiles / CHUNK);
+    this.camera = new Camera(map.tiles);
     this.chunks = [];
     this.shoreTiles = [];
     /** Water tiles that touch land; ambient surf breaks on these. */
@@ -112,8 +120,8 @@ export class Renderer {
   tileset() { return A.terrain.tileset[this.map.tileset % A.terrain.tileset.length]; }
 
   level(tx, ty) {
-    if (tx < 0 || ty < 0 || tx >= MAP_TILES || ty >= MAP_TILES) return LEVEL.WATER;
-    return this.map.level[ty * MAP_TILES + tx];
+    if (tx < 0 || ty < 0 || tx >= this.tiles || ty >= this.tiles) return LEVEL.WATER;
+    return this.map.level[ty * this.tiles + tx];
   }
   isLand(tx, ty) { return this.level(tx, ty) !== LEVEL.WATER; }
 
@@ -134,15 +142,15 @@ export class Renderer {
     const ts = this.tileset();
     this.waterColor = sampleColor(A.terrain.water.img);
 
-    for (let cy = 0; cy < CHUNKS; cy++) {
-      for (let cx = 0; cx < CHUNKS; cx++) {
+    for (let cy = 0; cy < this.chunkCount; cy++) {
+      for (let cx = 0; cx < this.chunkCount; cx++) {
         const cv = document.createElement('canvas');
         cv.width = CHUNK_PX; cv.height = CHUNK_PX;
         const c = cv.getContext('2d');
         c.imageSmoothingEnabled = false;
         // Chunks stay transparent over water so the surf can show beneath them.
-        for (let ty = cy * CHUNK; ty < Math.min(MAP_TILES, (cy + 1) * CHUNK); ty++) {
-          for (let tx = cx * CHUNK; tx < Math.min(MAP_TILES, (cx + 1) * CHUNK); tx++) {
+        for (let ty = cy * CHUNK; ty < Math.min(this.tiles, (cy + 1) * CHUNK); ty++) {
+          for (let tx = cx * CHUNK; tx < Math.min(this.tiles, (cx + 1) * CHUNK); tx++) {
             if (!this.isLand(tx, ty)) continue;
             const [col, row] = this.blobTile(tx, ty);
             c.drawImage(ts.img, (GROUND_SET_X + col) * TILE, row * TILE, TILE, TILE,
@@ -154,8 +162,8 @@ export class Renderer {
     }
 
     // Shore tiles get animated foam; the water side of the same edge gets surf.
-    for (let ty = 0; ty < MAP_TILES; ty++) {
-      for (let tx = 0; tx < MAP_TILES; tx++) {
+    for (let ty = 0; ty < this.tiles; ty++) {
+      for (let tx = 0; tx < this.tiles; tx++) {
         if (!this.isLand(tx, ty)) continue;
         let coastal = false;
         for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -239,12 +247,12 @@ export class Renderer {
 
   drawChunks(ctx, vis) {
     const c0 = Math.max(0, Math.floor(vis.x0 / CHUNK_PX));
-    const c1 = Math.min(CHUNKS - 1, Math.floor(vis.x1 / CHUNK_PX));
+    const c1 = Math.min(this.chunkCount - 1, Math.floor(vis.x1 / CHUNK_PX));
     const r0 = Math.max(0, Math.floor(vis.y0 / CHUNK_PX));
-    const r1 = Math.min(CHUNKS - 1, Math.floor(vis.y1 / CHUNK_PX));
+    const r1 = Math.min(this.chunkCount - 1, Math.floor(vis.y1 / CHUNK_PX));
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
-        const chunk = this.chunks[r * CHUNKS + c];
+        const chunk = this.chunks[r * this.chunkCount + c];
         if (chunk) ctx.drawImage(chunk.canvas, c * CHUNK_PX, r * CHUNK_PX);
       }
     }
@@ -616,7 +624,7 @@ export class Renderer {
   drawClouds(ctx, vis) {
     ctx.save();
     for (const c of this.map.clouds) {
-      const w = MAP_TILES * TILE;
+      const w = this.tiles * TILE;
       const x = (c.x + this.time * c.speed) % (w + 1200) - 600;
       if (x < vis.x0 - 700 || x > vis.x1 + 700) continue;
       if (c.y < vis.y0 - 400 || c.y > vis.y1 + 400) continue;
@@ -710,14 +718,14 @@ function sampleColor(img) {
  * and for the lobby's map preview, so what you pick is what you play.
  */
 export function paintMinimap(map, canvas) {
-  canvas.width = MAP_TILES;
-  canvas.height = MAP_TILES;
+  canvas.width = map.tiles;
+  canvas.height = map.tiles;
   const c = canvas.getContext('2d');
-  const img = c.createImageData(MAP_TILES, MAP_TILES);
+  const img = c.createImageData(map.tiles, map.tiles);
   const put = (i, r, g, b) => {
     img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255;
   };
-  for (let i = 0; i < MAP_TILES * MAP_TILES; i++) {
+  for (let i = 0; i < map.tiles * map.tiles; i++) {
     if (map.level[i] === LEVEL.WATER) put(i, 26, 82, 104);
     else put(i, 96, 134, 76);
   }

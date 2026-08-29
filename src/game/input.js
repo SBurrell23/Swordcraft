@@ -35,7 +35,6 @@ export class Input {
     this.game = game;
 
     this.selection = renderer.selection;
-    this.groups = new Map();
 
     this.mouse = { x: 0, y: 0, wx: 0, wy: 0, inside: false };
     this.drag = null;
@@ -387,24 +386,6 @@ export class Input {
       return;
     }
 
-    // Control groups.
-    if (/^Digit[1-9]$/.test(code)) {
-      const slot = code.slice(5);
-      if (e.ctrlKey || e.metaKey) {
-        this.groups.set(slot, [...this.selection]);
-        this.game.hud.toast('Group ' + slot + ' set');
-      } else {
-        const ids = this.groups.get(slot);
-        if (ids && ids.length) {
-          const live = new Set([...this.view.units, ...this.view.buildings].map((x) => x.id));
-          this.setSelection(ids.filter((id) => live.has(id)));
-          if (e.repeat === false && this.selection.size) this.centerOnSelection();
-        }
-      }
-      e.preventDefault();
-      return;
-    }
-
     switch (code) {
       case 'KeyA':
         if (this.ownSelected().length) { this.setMode('attackMove'); }
@@ -452,6 +433,9 @@ export class Input {
     this.setSelection(ids);
     return ids.length;
   }
+
+  /** Everything of yours, whatever it is doing. */
+  selectAllUnits() { return this.selectAllOwned(() => true); }
 
   selectAllArmy() { return this.selectAllOwned((u) => u.type !== 'peasant'); }
 
