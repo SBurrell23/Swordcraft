@@ -59,11 +59,15 @@ and 50 gold, enough for a single house or one peasant and nothing more.
 The first minutes are about getting income running, not spending a treasury you
 were handed.
 
-**Peasants.** Your castle trains peasants on a timer. Left alone they choose their
-own job — whichever resource you are shortest of, at the nearest seam with a
-free slot — and rethink it after every delivery, so income stays balanced
-without micromanagement. Right-click a tree or a gold seam to direct one
-yourself; it will stay there until the seam runs dry.
+**Peasants.** Your castle trains peasants on a timer. Left alone they choose
+their own job and rethink it after every delivery, so income stays balanced
+without micromanagement. What they weigh is the *haul* — how far a seam is from
+the base the load goes back to, which is the leg they walk twice on every trip
+for the rest of the game — tilted toward whichever resource you are shortest of.
+The tilt is a preference and not a compulsion: a peasant takes a nearby gold
+vein over a tree on the far side of the island, even when wood is what you want.
+Right-click a tree or a gold seam to direct one yourself; an explicit order has
+no such limit, and it will stay there until the seam runs dry.
 
 **Two resources, both worth having.** Wood is the bulk material — almost
 everything is mostly a wood bill — and gold is the smaller, sharper cost on top.
@@ -159,6 +163,8 @@ tools/
   buildtest.js      regression test: every sited building gets finished
   simtest.js        headless four-way AI soak test
   popstress.js      worst case: four full-population armies in one battle
+  pickcheck.js      regression test: peasants take the near seam, not the far one
+  haulcheck.js      diagnostic: how far peasants actually walk for a load
 ```
 
 ### Networking
@@ -190,10 +196,12 @@ minute and a player who merely alt-tabs has not left.
 ### Four test harnesses
 
 ```bash
-node tools/mapcheck.js 8      # generate 8 maps; check connectivity and fairness
+node tools/mapcheck.js 8      # generate 8 maps of each size; connectivity and fairness
 node tools/buildtest.js 8     # site every building on 8 maps; assert each is finished
 node tools/simtest.js 10      # run a 10-minute four-way AI match with no browser
 node tools/popstress.js 90    # four maxed armies in one fight; measure the worst case
+node tools/pickcheck.js       # assert peasants take the near seam over the far one
+node tools/haulcheck.js 8     # report how far peasants are actually walking
 ```
 
 `simtest` reports per-tick cost, snapshot size, and what each player's economy

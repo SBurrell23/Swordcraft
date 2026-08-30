@@ -25,6 +25,14 @@ import { NavGrid } from './pathfind.js';
 const BUILD_RANGE = TILE * 1.1;
 const DELIVER_RANGE = TILE * 1.1;
 
+/**
+ * How much further a self-directed peasant will walk per step down its list of
+ * preferred resources. At 0.6 the scarcer resource wins unless it is more than
+ * about 1.6x the haul of the next choice, which is roughly where a player stops
+ * calling it sensible and starts calling it wandering off.
+ */
+const KIND_BIAS = 0.6;
+
 /** Cell size for the unit lookup grid. Comfortably above the largest range. */
 const HASH = 128;
 // Row stride for the hash key. Sized for the largest map there is: a smaller
@@ -722,22 +730,30 @@ export class Sim {
       return db - da;
     });
 
-    // Take the best-ranked kind that actually has a reachable free node, so a
-    // player whose gold has run out does not leave peasants standing idle.
-    let fallback = null, fallbackD = Infinity;
-    for (const kind of order) {
-      let best = null, bestD = Infinity;
-      for (const n of this.nodes.values()) {
-        if (n.amount <= 0 || n.workers >= NODE_SLOTS[n.kind]) continue;
-        const d = (n.x - u.x) ** 2 + (n.y - u.y) ** 2;
-        if (n.kind === kind) { if (d < bestD) { bestD = d; best = n; } }
-        else if (d < fallbackD) { fallbackD = d; fallback = n; }
-      }
-      // A seam on the far side of the island is worse than a near second choice.
-      if (best && bestD < fallbackD * 6) { this.assignNode(u, best, true); return; }
-      if (best) { this.assignNode(u, best, true); return; }
+    // Score every free seam and take the cheapest, rather than taking the most
+    // wanted resource at any distance. Two things go into the cost:
+    //
+    //   haul - node to the base nearest *that node*, which is the leg the
+    //          peasant walks twice on every trip for the rest of the game, and
+    //          so is the number that actually matters;
+    //   trek - getting there in the first place, paid once.
+    //
+    // Preferring the scarcer resource is a tilt, not an override: a seam of the
+    // second choice wins if it is meaningfully closer. Without that a peasant
+    // will happily jog past a full gold vein at home to reach the nearest free
+    // tree on somebody else's doorstep.
+    const rank = Object.fromEntries(order.map((kind, i) => [kind, i]));
+    let best = null, bestScore = Infinity;
+    for (const n of this.nodes.values()) {
+      if (n.amount <= 0 || n.workers >= NODE_SLOTS[n.kind]) continue;
+      const drop = this.nearestDropoffTo(u.owner, n.x, n.y);
+      if (!drop) continue;
+      const haul = Math.hypot(n.x - drop.x, n.y - drop.y);
+      const trek = Math.hypot(n.x - u.x, n.y - u.y);
+      const score = (haul * 2 + trek) * (1 + rank[n.kind] * KIND_BIAS);
+      if (score < bestScore) { bestScore = score; best = n; }
     }
-    if (fallback) this.assignNode(u, fallback, true);
+    if (best) this.assignNode(u, best, true);
   }
 
   updateGatherGo(u, dt) {
@@ -834,11 +850,14 @@ export class Sim {
   }
 
   /** Loads go to the nearest finished base - a castle, or any outpost. */
-  nearestDropoff(u) {
+  nearestDropoff(u) { return this.nearestDropoffTo(u.owner, u.x, u.y); }
+
+  /** The base a load picked up at (x, y) would be carried to. */
+  nearestDropoffTo(ownerId, x, y) {
     let best = null, bestD = Infinity;
     for (const b of this.buildings.values()) {
-      if (b.owner !== u.owner || !b.done || !b.def.dropoff) continue;
-      const d = (b.x - u.x) ** 2 + (b.y - u.y) ** 2;
+      if (b.owner !== ownerId || !b.done || !b.def.dropoff) continue;
+      const d = (b.x - x) ** 2 + (b.y - y) ** 2;
       if (d < bestD) { bestD = d; best = b; }
     }
     return best;

@@ -35,6 +35,7 @@ jobs:
           node tools/buildtest.js 8
           node tools/simtest.js 3
           node tools/popstress.js 45
+          node tools/pickcheck.js
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
